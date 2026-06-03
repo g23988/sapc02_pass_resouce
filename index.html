@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAP-C02 刷題 · AWS Solutions Architect Professional</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">☁︎</span>
+    <div>
+      <div class="brand-title">SAP-C02 刷題</div>
+      <div class="brand-sub">AWS Solutions Architect – Professional · 529 題</div>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-mode="practice">練習</button>
+    <button class="tab" data-mode="exam">模擬考</button>
+    <button class="tab" data-mode="stats">統計</button>
+  </nav>
+  <div class="topbar-right">
+    <div class="seg" id="langSeg" title="顯示語言 (L 鍵切換)">
+      <button data-lang="both" class="active">雙語</button>
+      <button data-lang="en">EN</button>
+      <button data-lang="zh">中</button>
+    </div>
+    <button class="icon-btn" id="themeBtn" title="深色 / 淺色">◐</button>
+  </div>
+</header>
+
+<!-- ============ PRACTICE MODE ============ -->
+<main id="practiceView" class="view">
+  <aside class="sidebar">
+    <div class="search-wrap">
+      <input type="search" id="searchBox" placeholder="🔍 搜尋題目 / 選項關鍵字…" autocomplete="off">
+    </div>
+    <div class="filter-group">
+      <label class="filter-label">範圍</label>
+      <div class="seg seg-vert" id="scopeSeg">
+        <button data-scope="all" class="active">全部</button>
+        <button data-scope="unanswered">未做</button>
+        <button data-scope="wrong">錯題本</button>
+        <button data-scope="fav">★ 收藏</button>
+      </div>
+    </div>
+    <div class="filter-group">
+      <label class="filter-label">難度</label>
+      <div class="seg seg-vert" id="diffSeg">
+        <button data-mindiff="0" class="active">全部</button>
+        <button data-mindiff="3">★★★ 以上</button>
+        <button data-mindiff="4">★★★★ 以上</button>
+        <button data-mindiff="5">★★★★★ 最難</button>
+      </div>
+    </div>
+    <div class="filter-group">
+      <label class="filter-label">分類標籤</label>
+      <div id="tagChips" class="tag-chips"></div>
+    </div>
+    <div class="filter-group">
+      <label class="filter-label">題目 (<span id="listCount">0</span>)</label>
+      <div id="qNav" class="qnav"></div>
+    </div>
+  </aside>
+
+  <section class="content">
+    <div id="practiceCard" class="card"><!-- question rendered here --></div>
+    <div class="card-controls">
+      <button class="btn ghost" id="prevBtn">← 上一題</button>
+      <button class="btn" id="submitBtn">送出 (Enter)</button>
+      <button class="btn ghost" id="nextBtn">下一題 →</button>
+    </div>
+    <div class="kbd-hint">
+      快捷鍵：<kbd>1</kbd>–<kbd>6</kbd> 選答案 · <kbd>Enter</kbd> 送出/下一題 · <kbd>←</kbd> <kbd>→</kbd> 切換 · <kbd>F</kbd> 收藏 · <kbd>L</kbd> 語言
+    </div>
+  </section>
+</main>
+
+<!-- ============ EXAM MODE ============ -->
+<main id="examView" class="view hidden">
+  <div id="examSetup" class="exam-setup">
+    <h2>模擬考設定</h2>
+    <p class="muted">隨機抽題、計時作答，交卷後一次看分數與詳解。仿真實考試：不立即顯示答案。</p>
+    <div class="setup-row">
+      <label>題數</label>
+      <div class="seg" id="examCountSeg">
+        <button data-n="20">20</button>
+        <button data-n="40">40</button>
+        <button data-n="65" class="active">65</button>
+        <button data-n="75">75</button>
+      </div>
+    </div>
+    <div class="setup-row">
+      <label>時間 (分鐘)</label>
+      <div class="seg" id="examTimeSeg">
+        <button data-t="0">不限時</button>
+        <button data-t="60">60</button>
+        <button data-t="130">130</button>
+        <button data-t="180" class="active">180</button>
+      </div>
+    </div>
+    <div class="setup-row">
+      <label>出題範圍</label>
+      <div class="seg" id="examPoolSeg">
+        <button data-pool="all" class="active">全部題庫</button>
+        <button data-pool="wrong">只考錯題</button>
+      </div>
+    </div>
+    <button class="btn big" id="startExamBtn">開始考試</button>
+  </div>
+
+  <div id="examRun" class="hidden">
+    <div class="exam-bar">
+      <div class="exam-progress">第 <span id="examPos">1</span> / <span id="examTotal">65</span> 題
+        <span class="exam-answered" id="examAnswered"></span>
+      </div>
+      <div class="exam-timer" id="examTimer">--:--</div>
+      <button class="btn warn" id="submitExamBtn">交卷</button>
+    </div>
+    <div id="examCard" class="card"></div>
+    <div class="card-controls">
+      <button class="btn ghost" id="examPrevBtn">← 上一題</button>
+      <div id="examDots" class="exam-dots"></div>
+      <button class="btn ghost" id="examNextBtn">下一題 →</button>
+    </div>
+  </div>
+
+  <div id="examResult" class="hidden"></div>
+</main>
+
+<!-- ============ STATS MODE ============ -->
+<main id="statsView" class="view hidden">
+  <div id="statsBody" class="stats-body"></div>
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script src="questions.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
