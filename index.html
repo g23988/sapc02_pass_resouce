@@ -12,9 +12,10 @@
   <div class="brand">
     <span class="logo">☁︎</span>
     <div>
-      <div class="brand-title">SAP-C02 刷題</div>
-      <div class="brand-sub">AWS Solutions Architect – Professional · 529 題</div>
+      <div class="brand-title">刷題</div>
+      <div class="brand-sub">AWS 認證考古題</div>
     </div>
+    <select id="examSel" class="exam-sel" title="切換考試"></select>
   </div>
   <nav class="tabs" id="tabs">
     <button class="tab active" data-mode="practice">練習</button>
@@ -137,7 +138,18 @@
 
 <div id="toast" class="toast"></div>
 
-<script src="questions.js"></script>
+<script src="manifest.js"></script>
+<script>
+// pick the active exam (localStorage or first in manifest) and load its data file
+(function () {
+  var exams = window.EXAMS || [];
+  var ids = exams.map(function (e) { return e.id; });
+  var sel = localStorage.getItem("current_exam");
+  if (ids.indexOf(sel) < 0) sel = ids[0] || null;
+  window.CURRENT_EXAM = sel;
+  if (sel) document.write('<scr' + 'ipt src="data/' + sel + '.js"></scr' + 'ipt>');
+})();
+</script>
 <script src="app.js"></script>
 </body>
 </html>

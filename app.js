@@ -1,23 +1,31 @@
-/* SAP-C02 刷題 — vanilla JS, no backend. Data: window.QUESTIONS (from questions.js) */
+/* Multi-exam AWS quiz — vanilla JS, no backend.
+   Data: window.EXAM_DATA[CURRENT_EXAM] (data/<id>.js) · window.EXAMS (manifest.js) */
 "use strict";
 
-const Q = (window.QUESTIONS || []).slice().sort((a, b) => a.id - b.id);
+const EXAM_ID = window.CURRENT_EXAM;
+const EXAMS = window.EXAMS || [];
+const EXAM_META = EXAMS.find(e => e.id === EXAM_ID) || {};
+const Q = (((window.EXAM_DATA || {})[EXAM_ID]) || window.QUESTIONS || []).slice().sort((a, b) => a.id - b.id);
 const BY_ID = Object.fromEntries(Q.map(q => [q.id, q]));
 const ALL_TAGS = [...new Set(Q.flatMap(q => q.tags))].sort();
-const PASS = 75; // AWS SAP-C02 passing ≈ 750/1000
+const PASS = EXAM_META.pass_pct || 75; // AWS pro passing ≈ 750/1000
 
-/* ---------- persistence ---------- */
+/* ---------- persistence (progress/fav per-exam; settings shared) ---------- */
 const LS = {
-  get(k, d) { try { return JSON.parse(localStorage.getItem("sapc02_" + k)) ?? d; } catch { return d; } },
-  set(k, v) { try { localStorage.setItem("sapc02_" + k, JSON.stringify(v)); } catch {} },
+  get(k, d) { try { return JSON.parse(localStorage.getItem(EXAM_ID + "_" + k)) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(EXAM_ID + "_" + k, JSON.stringify(v)); } catch {} },
+};
+const GLS = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem("app_" + k)) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("app_" + k, JSON.stringify(v)); } catch {} },
 };
 let progress = LS.get("progress", {});      // id -> {choice:[...], correct:bool}
 let fav = new Set(LS.get("fav", []));        // ids
-const settings = LS.get("settings", { lang: "both", theme: "light" });
+const settings = GLS.get("settings", { lang: "both", theme: "light" });
 
 const saveProgress = () => LS.set("progress", progress);
 const saveFav = () => LS.set("fav", [...fav]);
-const saveSettings = () => LS.set("settings", settings);
+const saveSettings = () => GLS.set("settings", settings);
 
 /* ---------- state ---------- */
 const state = {
@@ -415,6 +423,20 @@ function setLang(l) {
 }
 function cycleLang() { const o = ["both", "en", "zh"]; setLang(o[(o.indexOf(settings.lang) + 1) % 3]); }
 function setTheme(t) { settings.theme = t; saveSettings(); document.documentElement.setAttribute("data-theme", t); }
+function initExamPicker() {
+  const sel = $("#examSel");
+  if (sel) {
+    sel.innerHTML = EXAMS.map(e =>
+      `<option value="${esc(e.id)}">${esc(e.short)}（${e.count} 題${e.researched ? "・查證 " + e.researched : ""}）</option>`).join("");
+    sel.value = EXAM_ID;
+    sel.onchange = () => { localStorage.setItem("current_exam", sel.value); location.reload(); };
+  }
+  const m = EXAM_META;
+  const title = (m.short || "AWS") + " 刷題";
+  const bt = $(".brand-title"); if (bt) bt.textContent = title;
+  const bs = $(".brand-sub"); if (bs) bs.textContent = (m.sub_zh ? m.sub_zh + " · " : "") + Q.length + " 題";
+  document.title = title + (m.name_en ? " · " + m.name_en : "");
+}
 
 /* ================= keyboard ================= */
 document.addEventListener("keydown", e => {
@@ -442,6 +464,7 @@ document.addEventListener("keydown", e => {
 
 /* ================= wiring ================= */
 function init() {
+  initExamPicker();
   setTheme(settings.theme);
   setLang(settings.lang);
 
@@ -476,5 +499,5 @@ function init() {
 
   switchMode("practice");
 }
-if (!Q.length) document.body.innerHTML = '<p style="padding:40px;font-family:sans-serif">⚠️ 找不到題庫資料 (questions.js)。請先執行 <code>python3 parse_pdf.py</code>。</p>';
+if (!Q.length) document.body.innerHTML = '<p style="padding:40px;font-family:sans-serif">⚠️ 找不到題庫資料。請先執行 <code>python3 lib/parse_pdf.py &lt;exam_id&gt;</code>。</p>';
 else init();
