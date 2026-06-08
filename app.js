@@ -57,8 +57,12 @@ function qText(q) {
 function optInner(q, L) {
   const en = q.options_en[L] || "";
   const zh = (q.options_zh && q.options_zh[L]) || "";
+  const code = (() => {
+    const i = en.indexOf("\n{");
+    return i >= 0 ? en.slice(i + 1) : "";
+  })();
   if (settings.lang === "en") return `<div class="opt-en">${esc(en)}</div>`;
-  if (settings.lang === "zh") return `<div class="opt-en">${esc(zh || en)}</div>`;
+  if (settings.lang === "zh") return `<div class="opt-en">${esc(zh ? (code && !zh.includes("\n{") ? zh + "\n" + code : zh) : en)}</div>`;
   return `<div class="opt-en">${esc(en)}</div>` + (zh ? `<span class="opt-zh">${esc(zh)}</span>` : "");
 }
 function optionsHTML(q, selected, graded) {
@@ -206,6 +210,7 @@ function renderPracticeCard() {
   if (!state.filtered.length) {
     card.innerHTML = `<div class="empty">這個範圍沒有題目 🎉<br><span class="muted">換個篩選條件，或繼續加油刷題。</span></div>`;
     $("#submitBtn").disabled = $("#prevBtn").disabled = $("#nextBtn").disabled = true;
+    $("#retryBtn").classList.add("hidden");
     return;
   }
   $("#prevBtn").disabled = state.curIdx === 0;
@@ -221,6 +226,7 @@ function renderPracticeCard() {
   const sb = $("#submitBtn");
   sb.disabled = state.graded ? false : state.selection.length === 0;
   sb.textContent = state.graded ? "下一題 (Enter)" : "送出 (Enter)";
+  $("#retryBtn").classList.toggle("hidden", !state.graded);
 }
 function practiceSelect(L) {
   if (state.graded) return;
@@ -242,6 +248,16 @@ function practiceSubmit() {
   progress[q.id] = { choice: state.selection.slice(), correct };
   saveProgress();
   state.graded = true;
+  renderPracticeCard();
+  renderNav();
+}
+function practiceRetry() {
+  if (!state.filtered.length) return;
+  const q = state.filtered[state.curIdx];
+  delete progress[q.id];
+  saveProgress();
+  state.selection = [];
+  state.graded = false;
   renderPracticeCard();
   renderNav();
 }
@@ -478,6 +494,7 @@ function init() {
     const op = e.target.closest(".opt"); if (op && !state.graded) practiceSelect(op.dataset.letter);
   });
   $("#submitBtn").onclick = practiceSubmit;
+  $("#retryBtn").onclick = practiceRetry;
   $("#prevBtn").onclick = () => practiceNav(-1);
   $("#nextBtn").onclick = () => practiceNav(1);
   $("#scopeSeg").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; $$("#scopeSeg button").forEach(x => x.classList.toggle("active", x === b)); state.scope = b.dataset.scope; state.selection = []; state.graded = false; renderPractice(); });

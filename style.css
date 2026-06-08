@@ -110,8 +110,8 @@ html[data-theme="dark"] .q-badge.multi{background:#3a2c12}
 }
 .opt.selected .mark{border-color:var(--blue);background:var(--blue);color:#fff}
 .opt-body{flex:1}
-.opt-en{font-size:14.5px}
-.opt-zh{display:block;color:var(--muted);font-size:13px;margin-top:4px}
+.opt-en{font-size:14.5px;white-space:pre-wrap}
+.opt-zh{display:block;color:var(--muted);font-size:13px;margin-top:4px;white-space:pre-wrap}
 /* graded states */
 .opt.correct{border-color:var(--green);background:var(--green-bg)}
 .opt.correct .mark{border-color:var(--green);background:var(--green);color:#fff}
