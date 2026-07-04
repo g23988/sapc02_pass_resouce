@@ -440,12 +440,18 @@ function renderStats() {
 }
 
 /* ================= mode / chrome ================= */
+function closeDrawer() {
+  const s = document.querySelector(".sidebar"); if (s) s.classList.remove("open");
+  const b = document.getElementById("drawerBackdrop"); if (b) b.classList.remove("show");
+}
 function switchMode(m) {
   state.mode = m;
   $$("#tabs .tab").forEach(b => b.classList.toggle("active", b.dataset.mode === m));
   $("#practiceView").classList.toggle("hidden", m !== "practice");
   $("#examView").classList.toggle("hidden", m !== "exam");
   $("#statsView").classList.toggle("hidden", m !== "stats");
+  closeDrawer();                                   // mobile: leave the drawer state clean on tab switch
+  const mb = $("#menuBtn"); if (mb) mb.style.display = m === "practice" ? "" : "none"; // 選題 only in practice
   if (m === "practice") renderPractice(state.filtered[state.curIdx]?.id);
   if (m === "stats") renderStats();
   if (m === "exam" && !state.exam) { $("#examSetup").classList.remove("hidden"); $("#examRun").classList.add("hidden"); $("#examResult").classList.add("hidden"); }
@@ -522,7 +528,13 @@ function init() {
   $("#scopeSeg").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; $$("#scopeSeg button").forEach(x => x.classList.toggle("active", x === b)); state.scope = b.dataset.scope; state.selection = []; state.graded = false; renderPractice(); });
   $("#tagChips").addEventListener("click", e => { const c = e.target.closest(".chip"); if (!c) return; state.tag = c.dataset.tag || null; state.selection = []; state.graded = false; renderPractice(); });
   $("#diffSeg").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; $$("#diffSeg button").forEach(x => x.classList.toggle("active", x === b)); state.minDiff = +b.dataset.mindiff; state.selection = []; state.graded = false; renderPractice(); });
-  $("#qNav").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; state.curIdx = +b.dataset.idx; state.selection = []; state.graded = false; renderPracticeCard(); renderNav(); });
+  $("#qNav").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; state.curIdx = +b.dataset.idx; state.selection = []; state.graded = false; renderPracticeCard(); renderNav(); closeDrawer(); });
+
+  // mobile drawer: the sidebar (search / scope / difficulty / tags / question list) slides in
+  const backdrop = document.createElement("div"); backdrop.id = "drawerBackdrop"; document.body.appendChild(backdrop);
+  const menuBtn = $("#menuBtn");
+  if (menuBtn) menuBtn.onclick = () => { const s = $(".sidebar"); const open = !s.classList.contains("open"); s.classList.toggle("open", open); backdrop.classList.toggle("show", open); };
+  backdrop.onclick = closeDrawer;
   let st;
   $("#searchBox").addEventListener("input", e => { clearTimeout(st); st = setTimeout(() => { state.search = e.target.value; renderPractice(); }, 180); });
 
