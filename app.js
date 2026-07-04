@@ -42,6 +42,19 @@ const $$ = s => [...document.querySelectorAll(s)];
 const esc = s => (s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const letters = q => Object.keys(q.options_en).sort();
 const setEq = (a, b) => a.length === b.length && [...a].sort().join("") === [...b].sort().join("");
+/* dual-accept grading: dump answer OR doc-verified research verdict both count as correct */
+const verdictOf = q => { const v = q.research && q.research.verdict; return (v && v.length) ? v : null; };
+const isRight = (q, sel) => { const v = verdictOf(q); return setEq(sel, q.answer) || (!!v && setEq(sel, v)); };
+/* one-time re-grade of stored history (answers that matched the verdict were recorded as wrong) */
+(function regrade() {
+  let dirty = false;
+  for (const id in progress) {
+    const q = BY_ID[id]; if (!q) continue;
+    const ok = isRight(q, progress[id].choice || []);
+    if (progress[id].correct !== ok) { progress[id].correct = ok; dirty = true; }
+  }
+  if (dirty) saveProgress();
+})();
 function shuffle(arr) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 let toastT;
 function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 1600); }
@@ -67,12 +80,14 @@ function optInner(q, L) {
 }
 function optionsHTML(q, selected, graded) {
   const ans = q.answer;
+  const vd = verdictOf(q);
   return `<div class="options${graded ? " graded" : ""}">` + letters(q).map((L, i) => {
     const sel = selected.includes(L);
     let cls = "opt", tick = "";
     if (sel) cls += " selected";
     if (graded) {
       if (ans.includes(L)) { cls = "opt correct"; tick = `<span class="tick">✓</span>`; }
+      else if (vd && vd.includes(L)) { cls = "opt correct vd"; tick = `<span class="tick" title="AWS 文件查證正解">🔎</span>`; }
       else if (sel) { cls = "opt incorrect"; tick = `<span class="tick">✕</span>`; }
     }
     return `<div class="${cls}" data-letter="${L}">
@@ -127,14 +142,17 @@ function researchHTML(q) {
   </div>`;
 }
 function feedbackHTML(q, selected) {
-  const correct = setEq(selected, q.answer);
+  const correct = isRight(q, selected);
+  const viaVerdict = correct && !setEq(selected, q.answer);
+  const vd = verdictOf(q);
+  const vdDiff = vd && !setEq(vd, q.answer);
   const ans = q.answer.join(", ");
   const voteEntries = Object.entries(q.vote || {}).sort((a, b) => b[1] - a[1]);
   const topVote = voteEntries.length ? voteEntries[0][0] : null;
   const diff = topVote && topVote.split("").sort().join("") !== q.answer.join("");
   return `<div class="feedback">
-    <div class="fb-line ${correct ? "ok" : "no"}">${correct ? "✓ 答對！" : "✕ 答錯"}
-      <span class="fb-ans">標準答案：${esc(ans)}</span></div>
+    <div class="fb-line ${correct ? "ok" : "no"}">${correct ? (viaVerdict ? "✓ 答對！（符合 AWS 文件查證正解）" : "✓ 答對！") : "✕ 答錯"}
+      <span class="fb-ans">標準答案：${esc(ans)}${vdDiff ? " · 查證正解：" + esc(vd.slice().sort().join(", ")) : ""}</span></div>
     ${voteHTML(q)}
     ${diff ? `<div class="note">⚠️ 社群最高票為 <b>${esc(topVote)}</b>，與標準答案 <b>${esc(ans)}</b> 不同。這類題目答案有爭議，建議兩者都理解。</div>` : ""}
     ${researchHTML(q)}
@@ -244,12 +262,13 @@ function practiceSubmit() {
   if (state.graded) { practiceNav(1); return; }
   if (!state.selection.length) return;
   const q = state.filtered[state.curIdx];
-  const correct = setEq(state.selection, q.answer);
+  const correct = isRight(q, state.selection);
   progress[q.id] = { choice: state.selection.slice(), correct };
   saveProgress();
   state.graded = true;
   renderPracticeCard();
   renderNav();
+  document.dispatchEvent(new CustomEvent("quiz:answered", { detail: { qid: q.id, correct, exam: EXAM_ID } })); // pet.js hook (no-op if absent)
 }
 function practiceRetry() {
   if (!state.filtered.length) return;
@@ -295,6 +314,7 @@ function startExam() {
   $("#examTotal").textContent = qs.length;
   if (t) { state.exam.timerId = setInterval(tickExam, 1000); tickExam(); }
   else { $("#examTimer").textContent = "∞"; }
+  document.dispatchEvent(new CustomEvent("quiz:examStart", { detail: { n: qs.length } })); // pet.js hook (no-op if absent)
   renderExamCard();
 }
 function tickExam() {
@@ -326,6 +346,7 @@ function examSelect(L) {
   else sel = [L];
   e.answers[q.id] = sel;
   renderExamCard();
+  document.dispatchEvent(new CustomEvent("quiz:examPick", { detail: { qid: q.id } })); // pet.js hook (no-op if absent)
 }
 function examNav(dir) {
   const e = state.exam, ni = e.pos + dir;
@@ -338,12 +359,13 @@ function submitExam() {
   let correct = 0;
   e.qs.forEach(q => {
     const sel = e.answers[q.id] || [];
-    const ok = setEq(sel, q.answer);
+    const ok = isRight(q, sel);
     if (ok) correct++;
     if (sel.length) progress[q.id] = { choice: sel.slice(), correct: ok }; // feed mistake book / stats
   });
   saveProgress();
   const pct = Math.round((correct / e.qs.length) * 100);
+  document.dispatchEvent(new CustomEvent("quiz:examDone", { detail: { pct, total: e.qs.length, exam: EXAM_ID } })); // pet.js hook (no-op if absent)
   renderExamResult(correct, pct);
   state.exam._graded = e; // keep for review
 }
@@ -367,7 +389,7 @@ function renderExamResult(correct, pct) {
 }
 function renderReview(wrongOnly) {
   const e = state.exam;
-  const list = e.qs.filter(q => !wrongOnly || !setEq(e.answers[q.id] || [], q.answer));
+  const list = e.qs.filter(q => !wrongOnly || !isRight(q, e.answers[q.id] || []));
   const html = list.length ? list.map(q => {
     const sel = e.answers[q.id] || [];
     return `<div class="card review-item">${headHTML(q, fav.has(q.id))}

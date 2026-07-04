@@ -1,0 +1,251 @@
+/* pet.css — 雲寶 virtual pet layer. Fully independent of app styles;
+   only reads theme via html[data-theme]. Remove this file + pet.js to uninstall. */
+
+#petLayer{
+  --pet-body:#ffffff; --pet-line:#d6dce6; --pet-face:#3a4456; --pet-cheek:#ffc9c9;
+  position:fixed; top:0; bottom:0; right:0; width:110px;
+  pointer-events:none; z-index:90; overflow:visible; /* bubble/floaters may extend left of the strip */
+}
+html[data-theme="dark"] #petLayer{
+  --pet-body:#43536e; --pet-line:#28344a; --pet-face:#e6ebf3; --pet-cheek:#c98a8a;
+}
+
+/* ---------- pet ---------- */
+#pet{
+  position:absolute; top:0; right:8px; width:72px; height:60px;
+  pointer-events:auto; cursor:pointer; user-select:none;
+  transition:transform 1s linear; will-change:transform;
+}
+#pet .pet-flip{width:100%;height:100%;display:flex;align-items:flex-end;justify-content:center;transition:.2s}
+#pet.tilt-up .pet-flip{transform:rotate(-8deg)}
+#pet.tilt-down .pet-flip{transform:rotate(8deg)}
+
+.pet-svg{width:100%;height:auto;filter:drop-shadow(0 3px 6px rgba(0,0,0,.14));transform-origin:50% 100%}
+.pet-svg .body{fill:var(--pet-body);stroke:var(--pet-line);stroke-width:1.5}
+.pet-svg .body rect{stroke:none}
+.pet-svg .eyes{transition:transform .25s}
+.pet-svg .eye{fill:var(--pet-face);transform-box:fill-box;transform-origin:center;animation:pet-blink 4.5s infinite}
+.pet-svg .eye-closed,.pet-svg .eye-happy{display:none;fill:none;stroke:var(--pet-face);stroke-width:1.8;stroke-linecap:round}
+.pet-svg .eye-star{display:none;fill:#f5b301;font-weight:700}
+.pet-svg .cheek{fill:var(--pet-cheek);opacity:.85;transition:.25s}
+.pet-svg .mouth{fill:none;stroke:var(--pet-face);stroke-width:2;stroke-linecap:round;display:none}
+.pet-svg .m-smile{display:inline}
+.pet-svg .headband{display:none;fill:#e03131}
+#pet.mood-flat  .m-smile{display:none} #pet.mood-flat  .m-flat{display:inline}
+#pet.mood-o     .m-smile{display:none} #pet.mood-o     .m-o{display:inline}
+#pet.mood-worry .m-smile{display:none} #pet.mood-worry .m-worry{display:inline}
+#pet.sleeping .eye{display:none}
+#pet.sleeping .eye-closed{display:inline}
+#pet.sleeping .m-smile{display:none} #pet.sleeping .m-flat{display:inline}
+#pet.dusty .pet-svg{filter:grayscale(.55) drop-shadow(0 3px 6px rgba(0,0,0,.14))}
+
+/* expressions */
+#pet.e-happy .eye,#pet.blush .eye{display:none;animation:none}
+#pet.e-happy .eye-happy,#pet.blush .eye-happy{display:inline}
+#pet.e-star .eye{display:none;animation:none}
+#pet.e-star .eye-star{display:inline}
+#pet.blush .cheek{opacity:1;r:4.2;fill:#ff9d9d}
+html[data-theme="dark"] #pet.blush .cheek{fill:#e07f7f}
+#pet.yawning .eye{display:none} #pet.yawning .eye-closed{display:inline}
+#pet.yawning .m-smile,#pet.yawning .m-flat,#pet.yawning .m-worry{display:none} #pet.yawning .m-o{display:inline}
+#pet .pet-sweat{display:none;position:absolute;top:2px;left:2px;font-size:13px}
+#pet.worried .pet-sweat{display:block;animation:pet-bob 1.2s infinite}
+#pet.exam .headband{display:inline}
+#pet.spinning .pet-flip{animation:pet-spin .6s ease}
+@keyframes pet-spin{to{transform:rotate(360deg)}}
+
+/* drag & toss: panic face while airborne */
+#pet.drag{cursor:grabbing}
+#pet.drag .pet-svg,#pet.toss .pet-svg{animation:none}
+#pet.drag .eye,#pet.toss .eye{display:none}
+#pet.drag .eye-closed,#pet.toss .eye-closed{display:inline}
+#pet.drag .m-smile,#pet.toss .m-smile{display:none}
+#pet.drag .m-o,#pet.toss .m-o{display:inline}
+#pet.toss .pet-flip{animation:pet-spin .5s linear infinite}
+
+/* stage sizes: 幼雲 → 小雲寶 → 大雲寶 → 雲王 */
+#pet.stage-1{width:48px} #pet.stage-2{width:58px} #pet.stage-3{width:74px} #pet.stage-4{width:86px}
+#pet.stage-1 .cheek{display:none}   /* 幼雲還沒長腮紅 */
+
+/* 大雲寶：培育傾向雛形配件（最終形態的預告） */
+.pet-svg .tacc{display:none;opacity:.85}
+#pet.stage-3.tend-arch  .tacc-arch{display:inline}
+#pet.stage-3.tend-guard .tacc-guard{display:inline}
+#pet.stage-3.tend-gear  .tacc-gear{display:inline}
+#pet.stage-3.tend-sage  .tacc-sage{display:inline}
+
+/* final forms: accessory + tint (arch/gold wear the drawn crown, others an emoji accessory) */
+.pet-svg .crown{display:none;fill:#f5b301;stroke:#d99a00;stroke-width:.8}
+.pet-svg .acc{display:none}
+#pet.form-arch .crown,#pet.form-gold .crown{display:inline}
+#pet.form-guard .acc-guard{display:inline}
+#pet.form-gear  .acc-gear{display:inline}
+#pet.form-sage  .acc-sage{display:inline}
+#pet.form-night .acc-night{display:inline}
+#pet.form-gold  .acc-gold{display:inline}
+#pet.form-gold .pet-svg .body{fill:#ffd968;stroke:#e0b23e}
+#pet.form-night{--pet-face:#eef2fb;--pet-cheek:#7d8fc0}
+#pet.form-night .pet-svg .body{fill:#3a4666;stroke:#2b3550}
+
+/* egg */
+#pet .pet-egg{display:none;font-size:42px;line-height:1;animation:pet-wobble 2.8s ease-in-out infinite;transform-origin:50% 90%}
+#pet.stage-0 .pet-egg{display:block}
+#pet.stage-0 .pet-svg{display:none}
+
+/* ---------- animations ---------- */
+@keyframes pet-blink{0%,91%,100%{transform:scaleY(1)}94%{transform:scaleY(.08)}}
+@keyframes pet-wobble{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+@keyframes pet-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes pet-jump{0%,100%{transform:translateY(0) scale(1)}30%{transform:translateY(-26px) scale(1.05)}55%{transform:translateY(0) scale(1)}70%{transform:translateY(-10px)}85%{transform:translateY(0) scaleX(1.08) scaleY(.92)}}
+@keyframes pet-squish{0%{transform:scale(1)}40%{transform:scale(1.16,.82)}100%{transform:scale(1)}}
+@keyframes pet-hatch{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.18)}100%{transform:scale(1);opacity:1}}
+@keyframes pet-walkstep{0%,100%{transform:translateY(0) rotate(0)}25%{transform:translateY(-2px) rotate(-2deg)}75%{transform:translateY(-2px) rotate(2deg)}}
+#pet.idle .pet-svg{animation:pet-bob 3.2s ease-in-out infinite}
+#pet.walking .pet-svg{animation:pet-walkstep .5s linear infinite}
+#pet.jumping .pet-svg{animation:pet-jump .9s ease-out}
+#pet.squish .pet-svg{animation:pet-squish .35s ease-out}
+#pet.hatching .pet-svg{animation:pet-hatch .8s ease-out}
+
+/* zzz */
+#pet .pet-zzz{display:none;position:absolute;top:-14px;right:-4px;font-size:15px;animation:pet-bob 2s infinite}
+#pet.sleeping .pet-zzz{display:block}
+
+/* thrown food: horizontal linear + vertical rise-then-fall bezier ≈ an arc */
+.pet-food{
+  position:fixed; z-index:92; font-size:22px; pointer-events:none; line-height:1;
+  transition:left .62s linear, top .62s cubic-bezier(.2,-.6,.85,.75);
+}
+
+/* ---------- floaters (food / hearts / xp) ---------- */
+.pet-float{
+  position:absolute; right:76px; font-size:20px; pointer-events:none;
+  animation:pet-float-up 1.3s ease-out forwards;
+}
+@keyframes pet-float-up{0%{opacity:0;transform:translateY(6px)}20%{opacity:1}100%{opacity:0;transform:translateY(-42px)}}
+.pet-float.xp{font-size:12.5px;font-weight:800;color:var(--accent,#ff9900);text-shadow:0 1px 2px rgba(0,0,0,.15)}
+
+/* ---------- speech bubble ---------- */
+#petBubble{
+  position:absolute; right:88px; width:max-content; max-width:230px; padding:8px 12px;
+  background:var(--surface,#fff); border:1px solid var(--border,#e1e5ec); border-radius:12px;
+  font-size:12.5px; color:var(--text,#1a2230); box-shadow:0 4px 14px rgba(0,0,0,.12);
+  opacity:0; transform:translateY(6px); transition:.25s; pointer-events:none; line-height:1.5;
+}
+#petBubble.show{opacity:1;transform:translateY(0);pointer-events:auto}  /* clickable only while visible (轉生 button) */
+#petBubble::after{
+  content:""; position:absolute; right:-6px; top:26px; width:10px; height:10px;
+  background:inherit; border-top:1px solid var(--border,#e1e5ec); border-right:1px solid var(--border,#e1e5ec);
+  transform:rotate(45deg);
+}
+#petBubble .pb-bars{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+#petBubble .pb-row{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted,#6b7689)}
+#petBubble .pb-track{display:block;flex:1;height:6px;background:var(--bg,#f4f6f9);border-radius:4px;overflow:hidden}
+#petBubble .pb-fill{display:block;height:100%;border-radius:4px;background:var(--accent,#ff9900);transition:.3s}
+#petBubble .pb-fill.mood{background:#e0669a}
+#petBubble .pb-fill.xp{background:#5b8cff}
+#petBubble .pb-next{margin-top:5px;font-size:11px;color:var(--muted,#6b7689)}
+#petBubble .pb-btn{
+  margin-top:7px;padding:4px 10px;font-size:11.5px;border-radius:8px;cursor:pointer;
+  border:1px solid var(--border,#e1e5ec);background:var(--bg,#f4f6f9);color:var(--text,#1a2230);
+}
+#petBubble .pb-btn:hover{border-color:var(--accent,#ff9900)}
+
+/* ---------- toggle button ---------- */
+#petToggle{
+  position:fixed; right:14px; bottom:14px; z-index:91;
+  width:34px; height:34px; border-radius:50%; border:1px solid var(--border,#e1e5ec);
+  background:var(--surface,#fff); color:var(--accent,#ff9900); font-size:16px;
+  cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.10); transition:.15s; line-height:1;
+}
+#petToggle:hover{border-color:var(--accent,#ff9900);transform:scale(1.08)}
+#petToggle.off{color:var(--muted,#6b7689);opacity:.55}
+
+/* weather: sun with star-eyes (combo), personal rain cloud (rough patch) */
+#pet .pet-sun,#pet .pet-rain{display:none;position:absolute;top:-20px;font-size:16px}
+#pet .pet-sun{left:-8px} #pet .pet-rain{right:-8px}
+#pet.e-star .pet-sun{display:block;animation:pet-bob 2.4s infinite}
+#pet.worried .pet-rain{display:block;animation:pet-bob 1.6s infinite}
+
+/* boss battle */
+#petBoss{
+  position:fixed;left:-140px;top:30%;z-index:89;font-size:74px;line-height:1;
+  cursor:pointer;opacity:0;transition:left .8s ease,opacity .7s;
+  filter:grayscale(.35) brightness(.55) drop-shadow(0 4px 10px rgba(0,0,0,.3));
+}
+#petBoss.in{left:16px;opacity:1}
+#petBoss .boss-face{position:absolute;left:50%;top:55%;transform:translate(-50%,-50%);font-size:28px;filter:brightness(1.6)}
+#petBoss.hit{animation:boss-shake .26s}
+#petBoss.boom{font-size:88px;opacity:0;filter:none;transition:.9s}
+@keyframes boss-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+.pet-bolt{position:fixed;z-index:95;font-size:22px;pointer-events:none;transition:left .4s ease-in,top .4s ease-in}
+
+/* passing NPC clouds */
+.pet-npc{position:fixed;right:-90px;z-index:88;font-size:36px;opacity:.75;pointer-events:none;transition:transform 15s linear}
+.pet-npc.go{transform:translateX(-120vw)}
+.pet-npc.gold{filter:drop-shadow(0 0 8px #ffd54a);opacity:1}
+
+/* quest list in status bubble */
+#petBubble .pb-quests{line-height:1.7}
+
+/* hat wearable */
+#pet .pet-hat{display:none;position:absolute;top:-13px;left:50%;transform:translateX(-50%) rotate(-8deg);font-size:16px}
+#pet.has-hat .pet-hat{display:block}
+
+/* furniture in the lane (behind the pet) */
+.pet-item{position:absolute;right:78px;font-size:20px;pointer-events:none;opacity:.9;z-index:0;transition:transform .3s}
+#pet{z-index:1}
+.item-lantern.lit{filter:drop-shadow(0 0 7px #ffb020)}
+
+/* interactions: kick / water / sleep-on-bed */
+#pet.kicking .pet-flip{animation:pet-kick .6s ease}
+@keyframes pet-kick{0%{transform:translateX(0) rotate(0)}35%{transform:translateX(-11px) rotate(-14deg)}55%{transform:translateX(3px) rotate(7deg)}100%{transform:none}}
+.pet-item.bounce{animation:pet-ballhop .95s ease}
+@keyframes pet-ballhop{
+  0%{transform:translateY(0) rotate(0)}
+  30%{transform:translateY(-30px) rotate(200deg)}
+  55%{transform:translateY(0) rotate(360deg)}
+  75%{transform:translateY(-12px) rotate(430deg)}
+  100%{transform:translateY(0) rotate(360deg)}
+}
+#pet.pouring .pet-flip{animation:pet-pour 1.5s ease}
+@keyframes pet-pour{0%,100%{transform:rotate(0)}25%,75%{transform:rotate(16deg)}}
+.pet-drop{position:absolute;right:82px;font-size:13px;pointer-events:none;animation:pet-dropfall .55s ease-in forwards}
+@keyframes pet-dropfall{0%{opacity:0;transform:translateY(0)}30%{opacity:1}100%{opacity:0;transform:translateY(24px)}}
+.item-plant.watered{animation:pet-plantjoy .95s ease}
+@keyframes pet-plantjoy{0%,100%{transform:scale(1)}30%{transform:scale(1.3) rotate(-7deg)}60%{transform:scale(1.15) rotate(7deg)}}
+#pet.sleeping.on-bed .pet-flip{transform:translateX(-50px)}
+.item-bed.occupied{transform:scale(1.25)}
+
+/* ball fetch */
+.item-ball{pointer-events:auto;cursor:grab}
+.item-ball:active{cursor:grabbing}
+.pet-loose-ball{position:fixed;z-index:95;font-size:22px;line-height:1;pointer-events:none;user-select:none;will-change:left,top}
+#pet .pet-carry{display:none;position:absolute;bottom:-3px;left:50%;transform:translateX(-50%);font-size:15px;z-index:2}
+#pet.carrying .pet-carry{display:block}
+#pet.carrying .m-smile{display:none} #pet.carrying .m-o{display:inline}
+
+/* shop panel */
+#petShop{
+  position:fixed;right:120px;bottom:70px;z-index:96;width:250px;
+  background:var(--surface,#fff);border:1px solid var(--border,#e1e5ec);border-radius:14px;
+  box-shadow:0 8px 28px rgba(0,0,0,.16);padding:10px 12px;font-size:13px;color:var(--text,#1a2230);
+}
+#petShop .shop-head{display:flex;align-items:center;gap:8px;font-weight:700;margin-bottom:6px}
+#petShop .shop-coin{margin-left:auto;font-weight:600;color:var(--accent-d,#ec7211)}
+#petShop #shopClose{border:0;background:none;cursor:pointer;font-size:14px;color:var(--muted,#6b7689)}
+#petShop .shop-item{display:flex;align-items:center;gap:9px;padding:7px 2px;border-top:1px solid var(--border,#e1e5ec)}
+#petShop .shop-emoji{font-size:20px}
+#petShop .shop-body{flex:1}
+#petShop .shop-desc{font-size:11px;color:var(--muted,#6b7689)}
+#petShop .shop-buy{
+  border:1px solid var(--border,#e1e5ec);background:var(--bg,#f4f6f9);color:var(--text,#1a2230);
+  border-radius:8px;padding:4px 9px;font-size:11.5px;cursor:pointer;white-space:nowrap;
+}
+#petShop .shop-buy:hover{border-color:var(--accent,#ff9900)}
+#petShop .shop-owned{font-size:11px;color:var(--green,#1aa260);white-space:nowrap}
+
+/* small screens: hide the pet, keep the toggle */
+@media (max-width:760px){ #petLayer{display:none} }
+@media (prefers-reduced-motion:reduce){
+  #pet, #pet .pet-svg, #pet .pet-egg{animation:none !important;transition:none !important}
+}
