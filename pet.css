@@ -244,8 +244,15 @@ html[data-theme="dark"] #pet.blush .cheek{fill:#e07f7f}
 #petShop .shop-buy:hover{border-color:var(--accent,#ff9900)}
 #petShop .shop-owned{font-size:11px;color:var(--green,#1aa260);white-space:nowrap}
 
-/* small screens: hide the pet, keep the toggle */
-@media (max-width:760px){ #petLayer{display:none} }
+/* small screens: keep the pet but make it smaller and out of the way (drawer opens from the left) */
+@media (max-width:760px){
+  #petLayer{width:80px}
+  #pet{right:6px}
+  #pet.stage-1{width:40px} #pet.stage-2{width:48px} #pet.stage-3{width:60px} #pet.stage-4{width:68px}
+  #petBubble{right:66px;max-width:min(230px,72vw)}
+  .pet-item{right:60px;font-size:17px}
+  #petToggle{bottom:64px}   /* clear of the mobile browser's bottom bar */
+}
 @media (prefers-reduced-motion:reduce){
   #pet, #pet .pet-svg, #pet .pet-egg{animation:none !important;transition:none !important}
 }

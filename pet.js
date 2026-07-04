@@ -170,6 +170,9 @@
     document.addEventListener("mouseup", onRelease);
     document.addEventListener("mousemove", onBallMove);
     document.addEventListener("mouseup", onBallRelease);
+    pet.addEventListener("touchstart", onPetTouchStart, { passive: true });
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
+    document.addEventListener("touchend", onTouchEnd);
   }
   function destroy() {
     clearInterval(brainT); clearTimeout(bubbleT); clearTimeout(walkEndT);
@@ -184,6 +187,8 @@
     document.removeEventListener("mouseup", onRelease);
     document.removeEventListener("mousemove", onBallMove);
     document.removeEventListener("mouseup", onBallRelease);
+    document.removeEventListener("touchmove", onTouchMove);
+    document.removeEventListener("touchend", onTouchEnd);
     if (layer) layer.remove();
     layer = pet = bubble = null;
   }
@@ -429,6 +434,31 @@
     }, 700);
   }
 
+  /* ---------- touch support (mobile) — map touch → the existing mouse drag handlers.
+     Tap still pats via the click event; we only preventDefault during an active drag so
+     the page keeps scrolling everywhere else. */
+  let touchKind = null;
+  function onPetTouchStart(e) {
+    const t = e.touches[0]; if (!t) return;
+    onGrab({ button: 0, clientX: t.clientX, clientY: t.clientY, preventDefault() {} });
+    touchKind = "pet";
+  }
+  function onBallTouchStart(e) {
+    const t = e.touches[0]; if (!t) return;
+    onBallGrab({ button: 0, clientX: t.clientX, clientY: t.clientY, preventDefault() {}, stopPropagation() {} });
+    touchKind = "ball";
+  }
+  function onTouchMove(e) {
+    const t = e.touches[0]; if (!t) return;
+    if (touchKind === "pet" && dragging) { e.preventDefault(); onDragMove({ clientX: t.clientX, clientY: t.clientY }); }
+    else if (touchKind === "ball" && ballDrag) { e.preventDefault(); onBallMove({ clientX: t.clientX, clientY: t.clientY }); }
+  }
+  function onTouchEnd() {
+    if (touchKind === "pet") onRelease();
+    else if (touchKind === "ball") onBallRelease();
+    touchKind = null;
+  }
+
   function spin() {
     wake();
     if (!pet || S.stage === 0) return;
@@ -646,7 +676,7 @@
       const el = $make("span", "pet-item item-" + id, SHOP.find(x => x.id === id).emoji);
       el.style.top = Math.round(window.innerHeight * ITEM_SPOTS[id]) + "px";
       if (id === "lantern" && isNight()) el.classList.add("lit");
-      if (id === "ball") el.addEventListener("mousedown", onBallGrab);   // drag to throw
+      if (id === "ball") { el.addEventListener("mousedown", onBallGrab); el.addEventListener("touchstart", onBallTouchStart, { passive: true }); }   // drag to throw
       layer.appendChild(el);
     }
   }
