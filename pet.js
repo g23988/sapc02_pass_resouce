@@ -14,7 +14,7 @@
     stage: 0,        // 0 蛋, 1 幼雲, 2 小雲寶, 3 大雲寶, 4 雲王
     feeds: 0, xp: 0,
     coins: 0, items: {},    // shop: 雲朵幣（與 XP 等量入帳）與家具/玩具
-    hunger: 70, mood: 80,   // 0–100
+    hunger: 70, mood: 80, clean: 90,   // 0–100
     lastTick: Date.now(),
     day: "", fedIds: [],    // daily anti-farm guard
     streakDays: 0, lastStudyDay: "",   // consecutive study-day streak
@@ -86,7 +86,8 @@
     if (h < 0.02) return;
     S.hunger = clamp(S.hunger - h * 0.8, 12, 100);
     S.mood = clamp(S.mood - h * 0.5, 25, 100);
-    S.dusty = h >= 72;                       // long absence → dusty until fed a bit
+    S.clean = clamp((S.clean == null ? 90 : S.clean) - h * 0.7, 0, 100);  // slowly gets grubby
+    S.dusty = h >= 72;                       // long absence → "想你" greeting
     S.lastTick = Date.now();
     save();
   }
@@ -170,6 +171,8 @@
     document.addEventListener("mouseup", onRelease);
     document.addEventListener("mousemove", onBallMove);
     document.addEventListener("mouseup", onBallRelease);
+    document.addEventListener("mousemove", onShowerMove);
+    document.addEventListener("mouseup", onShowerRelease);
     pet.addEventListener("touchstart", onPetTouchStart, { passive: true });
     document.addEventListener("touchmove", onTouchMove, { passive: false });
     document.addEventListener("touchend", onTouchEnd);
@@ -187,8 +190,11 @@
     document.removeEventListener("mouseup", onRelease);
     document.removeEventListener("mousemove", onBallMove);
     document.removeEventListener("mouseup", onBallRelease);
+    document.removeEventListener("mousemove", onShowerMove);
+    document.removeEventListener("mouseup", onShowerRelease);
     document.removeEventListener("touchmove", onTouchMove);
     document.removeEventListener("touchend", onTouchEnd);
+    if (looseShower) { looseShower.remove(); looseShower = null; }
     if (layer) layer.remove();
     layer = pet = bubble = null;
   }
@@ -204,7 +210,8 @@
     if (carrying) pet.classList.add("carrying");
     if (mode === "sleeping" && S.items && S.items.bed) pet.classList.add("on-bed");
     if (S.stage > 0) {
-      if (S.dusty) pet.classList.add("dusty");
+      if (S.clean < 22) pet.classList.add("dirty");
+      else if (S.clean < 45) pet.classList.add("grimy");
       if (fx.exam) pet.classList.add("exam");
       if (mode !== "sleeping") {
         const now = Date.now();
@@ -272,7 +279,7 @@
   function think() {
     applyDecay(); rollDay();
     if (!pet || (mode !== "idle" && mode !== "sleeping")) return;   // walking/busy/drag/toss: let it finish
-    if (ballDrag || looseBall) return;                              // playing fetch — don't wander off
+    if (ballDrag || looseBall || showerDrag || looseShower) return; // playing / bathing — don't wander off
     if (Date.now() - lastActivity > 90000 && mode !== "sleeping") {
       const goSleep = () => {
         mode = "sleeping"; refreshLook();
@@ -448,14 +455,21 @@
     onBallGrab({ button: 0, clientX: t.clientX, clientY: t.clientY, preventDefault() {}, stopPropagation() {} });
     touchKind = "ball";
   }
+  function onShowerTouchStart(e) {
+    const t = e.touches[0]; if (!t) return;
+    onShowerGrab({ button: 0, clientX: t.clientX, clientY: t.clientY, preventDefault() {}, stopPropagation() {} });
+    touchKind = "shower";
+  }
   function onTouchMove(e) {
     const t = e.touches[0]; if (!t) return;
     if (touchKind === "pet" && dragging) { e.preventDefault(); onDragMove({ clientX: t.clientX, clientY: t.clientY }); }
     else if (touchKind === "ball" && ballDrag) { e.preventDefault(); onBallMove({ clientX: t.clientX, clientY: t.clientY }); }
+    else if (touchKind === "shower" && showerDrag) { e.preventDefault(); onShowerMove({ clientX: t.clientX, clientY: t.clientY }); }
   }
   function onTouchEnd() {
     if (touchKind === "pet") onRelease();
     else if (touchKind === "ball") onBallRelease();
+    else if (touchKind === "shower") onShowerRelease();
     touchKind = null;
   }
 
@@ -474,7 +488,7 @@
 
   let mouseT = 0;
   function onMouse(e) {
-    if (ballDrag || looseBall) return;           // busy with the ball
+    if (ballDrag || looseBall || showerDrag || looseShower) return;   // busy with ball / shower
     const now = Date.now();
     if (now - mouseT < 700) return;
     mouseT = now;
@@ -623,6 +637,7 @@
     { id: "snack", name: "豪華點心", emoji: "🍱", price: 15, desc: "立刻 +40 飽足", consumable: true },
     { id: "plant", name: "小盆栽", emoji: "🪴", price: 20, desc: "雲寶偶爾幫它澆水" },
     { id: "ball", name: "玩具球", emoji: "⚽", price: 30, desc: "雲寶會自己去踢著玩" },
+    { id: "shower", name: "蓮蓬頭", emoji: "🚿", price: 35, desc: "拖到雲寶身上幫牠洗澡" },
     { id: "lantern", name: "小燈籠", emoji: "🏮", price: 40, desc: "深夜會亮起來陪刷題" },
     { id: "bed", name: "雲朵小床", emoji: "🛏️", price: 50, desc: "想睡時會回床上睡" },
     { id: "hat", name: "小禮帽", emoji: "🎩", price: 60, desc: "戴上變紳士雲" },
@@ -666,7 +681,7 @@
     save(); renderShop();
   }
   /* owned furniture lives in the pet's lane */
-  const ITEM_SPOTS = { lantern: 0.15, ball: 0.32, plant: 0.55, bed: 0.86 };
+  const ITEM_SPOTS = { lantern: 0.15, ball: 0.32, shower: 0.42, plant: 0.55, bed: 0.86 };
   function placeItems() {
     if (!layer) return;
     layer.querySelectorAll(".pet-item").forEach(n => n.remove());
@@ -677,6 +692,7 @@
       el.style.top = Math.round(window.innerHeight * ITEM_SPOTS[id]) + "px";
       if (id === "lantern" && isNight()) el.classList.add("lit");
       if (id === "ball") { el.addEventListener("mousedown", onBallGrab); el.addEventListener("touchstart", onBallTouchStart, { passive: true }); }   // drag to throw
+      if (id === "shower") { el.addEventListener("mousedown", onShowerGrab); el.addEventListener("touchstart", onShowerTouchStart, { passive: true }); }  // drag onto pet to wash
       layer.appendChild(el);
     }
   }
@@ -819,6 +835,65 @@
     pet.style.transform = `translate(${left - laneL}px, ${top}px)`;
     clearTimeout(fetchT);
     fetchT = setTimeout(() => cb && cb(), dur * 1000 + 60);
+  }
+
+  /* ---------- shower: drag the showerhead onto the pet to wash it ---------- */
+  let showerDrag = false, looseShower = null, shGX = 0, shGY = 0;
+  const overPet = (cx, cy) => {
+    if (!pet) return false;
+    const r = pet.getBoundingClientRect();
+    return cx > r.left - 24 && cx < r.right + 24 && cy > r.top - 24 && cy < r.bottom + 40;
+  };
+  function onShowerGrab(e) {
+    if (!pet || e.button !== 0 || !(S.items && S.items.shower) || looseShower) return;
+    e.preventDefault(); e.stopPropagation();
+    const lane = layer && layer.querySelector(".item-shower");
+    const r = lane ? lane.getBoundingClientRect() : { left: e.clientX - 11, top: e.clientY - 11 };
+    if (lane) lane.remove();
+    looseShower = $make("span", "pet-loose-shower", "🚿");
+    looseShower.style.left = r.left + "px"; looseShower.style.top = r.top + "px";
+    document.body.appendChild(looseShower);
+    shGX = e.clientX - r.left; shGY = e.clientY - r.top;
+    showerDrag = true; wake();
+  }
+  function onShowerMove(e) {
+    if (!showerDrag || !looseShower) return;
+    looseShower.style.left = (e.clientX - shGX) + "px";
+    looseShower.style.top = (e.clientY - shGY) + "px";
+    const on = overPet(e.clientX, e.clientY);
+    looseShower.classList.toggle("spraying", on);
+    if (on && Math.random() < 0.35) sprayDrop(e.clientX + 4, e.clientY + 10);
+  }
+  function onShowerRelease() {
+    if (!showerDrag) return;
+    showerDrag = false;
+    if (!looseShower) return;
+    const r = looseShower.getBoundingClientRect();
+    const on = overPet(r.left + 11, r.top + 11);
+    looseShower.remove(); looseShower = null;
+    if (on) washPet(); else placeItems();          // over the pet → wash; otherwise put it back
+  }
+  function sprayDrop(cx, cy) {
+    const d = $make("span", "pet-spray", "💧");
+    d.style.left = cx + "px"; d.style.top = cy + "px";
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 520);
+  }
+  function washPet() {
+    if (!pet) return;
+    mode = "busy"; refreshLook();
+    pet.classList.add("washing");
+    [0, 130, 260, 390, 520, 650, 780].forEach(t => setTimeout(() => float(pick(["🫧", "🫧", "🧼", "✨"])), t));
+    S.clean = 100; S.dusty = false; S.mood = clamp(S.mood + 4, 0, 100);
+    express("happyUntil", 2600);
+    say(pick(["洗香香～ 🫧", "啊……舒服", "亮晶晶了！✨", "搓搓搓 🧼"]), 2600);
+    setTimeout(() => {
+      if (!pet) return;
+      pet.classList.remove("washing");
+      if (mode === "busy") { mode = "idle"; refreshLook(); }
+      placeItems();                                // showerhead back in its lane spot
+      save();
+    }, 1800);
   }
 
   /* ---------- shareable pet card (canvas → PNG download) ---------- */
@@ -990,7 +1065,7 @@
       : "";
     const btns = `<div>${S.stage === 4 ? `<button id="petRebirth" class="pb-btn">🥚 轉生</button>` : ""}<button id="petShopBtn" class="pb-btn">🛍️ 商城</button><button id="petCard" class="pb-btn">📇 名片</button></div>`;
     return `<b>${stageName}</b> · Lv.${lv}${streak} · 💰${S.coins || 0}
-      <div class="pb-bars">${bar("飽足", S.hunger, "")}${bar("心情", S.mood, "mood")}${bar("經驗", rem / need * 100, "xp")}</div>
+      <div class="pb-bars">${bar("飽足", S.hunger, "")}${bar("心情", S.mood, "mood")}${bar("整潔", S.clean == null ? 90 : S.clean, "clean")}${bar("經驗", rem / need * 100, "xp")}</div>
       ${nextStage ? `<div class="pb-next">${nextStage}</div>` : ""}${tend}${todayLine}${questLines}${dexLine}${btns}`;
   }
 

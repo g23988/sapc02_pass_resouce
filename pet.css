@@ -38,6 +38,11 @@ html[data-theme="dark"] #petLayer{
 #pet.sleeping .eye-closed{display:inline}
 #pet.sleeping .m-smile{display:none} #pet.sleeping .m-flat{display:inline}
 #pet.dusty .pet-svg{filter:grayscale(.55) drop-shadow(0 3px 6px rgba(0,0,0,.14))}
+/* cleanliness: the grubbier, the greyer */
+#pet.grimy .pet-svg{filter:grayscale(.4) brightness(.94) drop-shadow(0 3px 6px rgba(0,0,0,.14))}
+#pet.dirty .pet-svg{filter:grayscale(.65) brightness(.85) drop-shadow(0 3px 6px rgba(0,0,0,.14))}
+#pet.washing .pet-flip{animation:pet-wash .5s ease-in-out infinite}
+@keyframes pet-wash{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
 
 /* expressions */
 #pet.e-happy .eye,#pet.blush .eye{display:none;animation:none}
@@ -143,6 +148,7 @@ html[data-theme="dark"] #pet.blush .cheek{fill:#e07f7f}
 #petBubble .pb-fill{display:block;height:100%;border-radius:4px;background:var(--accent,#ff9900);transition:.3s}
 #petBubble .pb-fill.mood{background:#e0669a}
 #petBubble .pb-fill.xp{background:#5b8cff}
+#petBubble .pb-fill.clean{background:#3fb6c9}
 #petBubble .pb-next{margin-top:5px;font-size:11px;color:var(--muted,#6b7689)}
 #petBubble .pb-btn{
   margin-top:7px;padding:4px 10px;font-size:11.5px;border-radius:8px;cursor:pointer;
@@ -218,6 +224,11 @@ html[data-theme="dark"] #pet.blush .cheek{fill:#e07f7f}
 
 /* ball fetch */
 .item-ball{pointer-events:auto;cursor:grab}
+.item-shower{pointer-events:auto;cursor:grab}
+.item-shower:active{cursor:grabbing}
+.pet-loose-shower{position:fixed;z-index:95;font-size:24px;line-height:1;pointer-events:none;user-select:none;will-change:left,top}
+.pet-loose-shower.spraying{animation:pet-wobble .3s ease-in-out infinite}
+.pet-spray{position:fixed;z-index:96;font-size:12px;pointer-events:none;animation:pet-dropfall .5s ease-in forwards}
 .item-ball:active{cursor:grabbing}
 .pet-loose-ball{position:fixed;z-index:95;font-size:22px;line-height:1;pointer-events:none;user-select:none;will-change:left,top}
 #pet .pet-carry{display:none;position:absolute;bottom:-3px;left:50%;transform:translateX(-50%);font-size:15px;z-index:2}
