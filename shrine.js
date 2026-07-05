@@ -128,7 +128,7 @@
     panel = $m("div"); panel.id = "shrinePanel";
     overlay.appendChild(panel);
     document.body.appendChild(overlay);
-    st = 0; bows = 0;
+    st = 0; bows = 0; lit = false; dipped = false; holding = false;
     render();
     burnT = setInterval(() => { if (panel && offeredToday()) render(); }, 30000);
   }
@@ -153,10 +153,8 @@
         <div class="bl-poem">${s.poem || ""}</div>
         <div class="sh-tag">今日 XP／雲朵幣 ×${(s.mult || 1.2).toFixed(2)}（明日可再上香）</div></div>`;
       actLabel = "";
-    } else if (st === 0) { inst = "點香、參拜、插香——為今日求個好運。"; actLabel = "🙏 開始上香"; }
-    else if (st === 1) { inst = "拿起香，把香頭湊到火爐點燃 🔥"; actLabel = ""; }
-    else if (st === 2) { inst = `向文昌帝君誠心參拜（${bows}/3）`; actLabel = `參拜 (${bows}/3)`; }
-    else if (st === 3) { inst = "將香插入香爐。"; actLabel = "插香入爐"; }
+    } else if (st === 0) { inst = "點火 → 參拜 → 插香，全程按住香；中途放開會掉，得重來。"; actLabel = "🙏 開始上香"; }
+    else if (st === 1) { inst = ritualInst(); actLabel = ""; }
 
     panel.innerHTML = `<button class="sh-close" title="關閉">✕</button>
       <div class="sh-title">文昌殿</div>
@@ -164,8 +162,8 @@
       <div class="sh-stage">
         <div class="sh-deity">${DEITY}</div>
         <div class="sh-censer"></div>
-        ${(st >= 1 && st <= 3) ? `<div class="sh-hand${st >= 2 ? " lit" : ""}${st === 1 ? " grab" : ""}">🤲<div class="sticks"><span class="st"></span><span class="st"></span><span class="st"></span></div></div>` : ""}
-        ${st === 1 ? `<div class="sh-brazier" title="火爐">${BRAZIER}</div>` : ""}
+        ${st === 1 ? `<div class="sh-hand grab${lit ? " lit" : ""}">🤲<div class="sticks"><span class="st"></span><span class="st"></span><span class="st"></span></div></div>` : ""}
+        ${(st === 1 && !lit) ? `<div class="sh-brazier" title="火爐">${BRAZIER}</div>` : ""}
       </div>
       <div class="sh-inst">${inst}</div>
       ${actLabel ? `<button class="sh-act" id="${actId}">${actLabel}</button>` : ""}
@@ -181,51 +179,84 @@
     panel.querySelector(".sh-close").onclick = closeShrine;
     if (st === 1) {
       const hand = panel.querySelector(".sh-hand");
-      if (hand) { hand.addEventListener("mousedown", startHandDrag); hand.addEventListener("touchstart", startHandDrag, { passive: false }); }
+      if (hand) { hand.addEventListener("mousedown", grabHand); hand.addEventListener("touchstart", grabHand, { passive: false }); }
     }
     const act = panel.querySelector("#shAct");
     if (act) act.onclick = onAct;
   }
 
-  /* light the incense: grab the hand, bring the tips to the fire brazier */
-  let handDrag = false;
-  function startHandDrag(e) {
-    if (st !== 1 || handDrag) return;
-    e.preventDefault();
-    handDrag = true;
-    window.addEventListener("mousemove", moveHand);
-    window.addEventListener("mouseup", endHandDrag);
-    window.addEventListener("touchmove", moveHand, { passive: false });
-    window.addEventListener("touchend", endHandDrag);
+  /* ---------- the ritual is ONE continuous hold: light → bow ×3 → insert.
+     Release the button before inserting and the incense drops → start over. ---------- */
+  let holding = false, lit = false, bowAnchor = 0, dipped = false;
+  function ritualInst() {
+    if (!lit) return "按住香，把香頭湊到火爐點燃 🔥";
+    if (bows < 3) return `向文昌帝君參拜：往下一拜再起身（還差 ${3 - bows} 拜）`;
+    return "拖著香插入香爐，即完成 🙏";
   }
-  function moveHand(e) {
-    if (!handDrag || !panel) return;
-    if (e.cancelable) e.preventDefault();
-    const p = touchPt(e), hand = panel.querySelector(".sh-hand"), stage = panel.querySelector(".sh-stage");
-    if (!hand || !stage) return;
-    const r = stage.getBoundingClientRect();
+  const stageRect = () => { const s = panel && panel.querySelector(".sh-stage"); return s ? s.getBoundingClientRect() : null; };
+  function positionHand(p) {
+    const hand = panel && panel.querySelector(".sh-hand"), r = stageRect();
+    if (!hand || !r) return;
     hand.style.left = (p.x - r.left) + "px"; hand.style.top = (p.y - r.top) + "px";
     hand.style.bottom = "auto"; hand.style.transform = "translate(-50%,-50%)";
-    const br = panel.querySelector(".sh-brazier");
-    if (br) {
-      const b = br.getBoundingClientRect(), cx = b.left + b.width / 2, cy = b.top + b.height / 2;
-      if (Math.hypot(p.x - cx, (p.y - 44) - cy) < 34) igniteFromFire();   // incense tips ~44px above the hand
+  }
+  const setInst = t => { const i = panel && panel.querySelector(".sh-inst"); if (i) i.textContent = t; };
+  function grabHand(e) {
+    if (st !== 1 || holding) return;
+    e.preventDefault();
+    holding = true;
+    const p = touchPt(e), r = stageRect();
+    positionHand(p);
+    bowAnchor = r ? p.y - r.top : 0; dipped = false;
+    window.addEventListener("mousemove", dragHand);
+    window.addEventListener("mouseup", releaseHand);
+    window.addEventListener("touchmove", dragHand, { passive: false });
+    window.addEventListener("touchend", releaseHand);
+  }
+  function dragHand(e) {
+    if (!holding || !panel) return;
+    if (e.cancelable) e.preventDefault();
+    const p = touchPt(e), r = stageRect();
+    positionHand(p);
+    if (!r) return;
+    const y = p.y - r.top;
+    if (!lit) {
+      const br = panel.querySelector(".sh-brazier");
+      if (br) { const b = br.getBoundingClientRect(); if (Math.hypot(p.x - (b.left + b.width / 2), (p.y - 42) - (b.top + b.height / 2)) < 36) doLight(); }
+    } else if (bows < 3) {                       // bow = dip the incense down, then rise
+      if (y < bowAnchor) bowAnchor = y;
+      if (!dipped && y > bowAnchor + 50) dipped = true;
+      else if (dipped && y < bowAnchor + 16) { registerBow(); bowAnchor = y; dipped = false; }
+    } else {
+      const cb = panel.querySelector(".sh-censer");
+      if (cb) { const b = cb.getBoundingClientRect(); if (Math.hypot(p.x - (b.left + b.width / 2), (p.y - 40) - (b.top + b.height * 0.5)) < 44) doInsert(); }
     }
   }
-  function endHandDrag() {
-    handDrag = false;
-    window.removeEventListener("mousemove", moveHand);
-    window.removeEventListener("mouseup", endHandDrag);
-    window.removeEventListener("touchmove", moveHand);
-    window.removeEventListener("touchend", endHandDrag);
+  function detachHand() {
+    holding = false;
+    window.removeEventListener("mousemove", dragHand);
+    window.removeEventListener("mouseup", releaseHand);
+    window.removeEventListener("touchmove", dragHand);
+    window.removeEventListener("touchend", releaseHand);
   }
-  function igniteFromFire() {
-    if (st !== 1) return;
-    endHandDrag();
+  function releaseHand() { if (holding) { detachHand(); dropIncense(); } }
+  function doLight() {
+    lit = true;
+    const hand = panel.querySelector(".sh-hand"); if (hand) hand.classList.add("lit", "flash");
+    const br = panel.querySelector(".sh-brazier"); if (br) br.style.display = "none";
+    setInst(ritualInst());
+  }
+  function registerBow() { bows++; deityBow(); setInst(ritualInst()); }
+  function deityBow() {
+    const d = panel && panel.querySelector(".sh-deity");
+    if (d) { d.classList.remove("bowing"); void d.offsetWidth; d.classList.add("bowing"); setTimeout(() => d && d.classList.remove("bowing"), 480); }
+  }
+  function doInsert() { detachHand(); insert(); }     // insert() rolls the blessing and finishes
+  function dropIncense() {
     const hand = panel && panel.querySelector(".sh-hand");
-    if (hand) hand.classList.add("lit", "flash");
-    st = 2;
-    setTimeout(render, 300);
+    if (hand) { hand.style.transition = "opacity .35s, top .3s"; hand.style.opacity = "0"; hand.style.top = ((parseFloat(hand.style.top) || 0) + 44) + "px"; }
+    lit = false; bows = 0; dipped = false;
+    setTimeout(() => { if (!panel) return; st = 1; render(); setInst("香掉了，重來一次 🙏　按住香湊到火爐點燃"); }, 360);
   }
 
   /* drag an incense stick out; releasing the button discards it */
@@ -266,7 +297,7 @@
     reactPull();
     if (s.sticks <= 0) {                 // censer empty → clear today's offering, ritual re-opens
       save({});
-      st = 0; bows = 0;
+      st = 0; bows = 0; lit = false; dipped = false;
       setTimeout(render, 320);
     } else {
       save(s);
@@ -283,16 +314,7 @@
   const pick = a => a[Math.floor(Math.random() * a.length)];
 
   function onAct() {
-    if (st === 0) { st = 1; render(); }
-    else if (st === 2) bow();
-    else if (st === 3) insert();
-  }
-  function bow() {
-    const d = panel && panel.querySelector(".sh-deity");
-    if (d) { d.classList.add("bowing"); setTimeout(() => d.classList.remove("bowing"), 500); }
-    bows++;
-    if (bows >= 3) { st = 3; setTimeout(render, 520); }
-    else { const a = panel.querySelector("#shAct"); if (a) a.textContent = `參拜 (${bows}/3)`; const i = panel.querySelector(".sh-inst"); if (i) i.textContent = `向文昌帝君誠心參拜（${bows}/3）`; }
+    if (st === 0) { lit = false; bows = 0; dipped = false; st = 1; render(); }   // begin the ritual
   }
   function insert() {
     const b = rollBlessing();
