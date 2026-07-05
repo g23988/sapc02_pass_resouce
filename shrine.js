@@ -130,7 +130,7 @@
     document.body.appendChild(overlay);
     st = 0; bows = 0; lit = false; dipped = false; holding = false;
     render();
-    burnT = setInterval(() => { if (panel && offeredToday()) render(); }, 30000);
+    burnT = setInterval(() => { if (panel && !holding && st !== 1) render(); }, 30000);   // keep incense burn-down fresh
   }
   function closeShrine() {
     clearInterval(burnT);
@@ -141,20 +141,22 @@
 
   function render() {
     if (!panel) return;
-    const done = offeredToday();
     const s = load();
+    const done = s.day === today() && s.mult;    // today's blessing already claimed (locked for the day)
     const frac = burnFrac(), burning = frac > 0.02;
+    const sticksN = (done && frac > 0) ? (s.sticks == null ? 3 : s.sticks) : 0;
+    const active = sticksN > 0;                   // incense still burning in the censer
+    const censerN = st === 1 ? 0 : sticksN;       // during the (re)lighting ritual the censer is empty
     let inst = "", actLabel = "", actId = "shAct", blessing = "";
 
-    const sticksN = done ? (s.sticks == null ? 3 : s.sticks) : 0;
-    if (done) {
-      inst = "今日已誠心上香 🙏　按住香拖出即可丟棄，全部拔起可重新上香。";
-      blessing = `<div class="sh-blessing"><div class="bl-main">${s.main || "文昌加持"}</div>
+    if (done) blessing = `<div class="sh-blessing"><div class="bl-main">${s.main || "文昌加持"}</div>
         <div class="bl-poem">${s.poem || ""}</div>
-        <div class="sh-tag">今日 XP／雲朵幣 ×${(s.mult || 1.2).toFixed(2)}（明日可再上香）</div></div>`;
-      actLabel = "";
-    } else if (st === 0) { inst = "點火 → 參拜 → 插香，全程按住香；中途放開會掉，得重來。"; actLabel = "🙏 開始上香"; }
-    else if (st === 1) { inst = ritualInst(); actLabel = ""; }
+        <div class="sh-tag">今日 XP／雲朵幣 ×${(s.mult || 1.2).toFixed(2)}（明日才重置）</div></div>`;
+
+    if (st === 1) { inst = ritualInst(); actLabel = ""; }
+    else if (done && active) { inst = "今日已上香 🙏　按住香拖出即可丟棄。"; }
+    else if (done && !active) { inst = "香已燒盡——可再點一炷（今日加持不變，明日才重置）。"; actLabel = "🔁 再點一炷香"; }
+    else { inst = "點火 → 參拜 → 插香，全程按住香；中途放開會掉，得重來。"; actLabel = "🙏 開始上香"; }
 
     panel.innerHTML = `<button class="sh-close" title="關閉">✕</button>
       <div class="sh-title">文昌殿</div>
@@ -170,10 +172,10 @@
       ${blessing}`;
 
     const cbox = panel.querySelector(".sh-censer");
-    renderCenser(cbox, frac, burning, sticksN, done);
-    if (done) {
-      cbox.addEventListener("mousedown", e => { const s = e.target.closest(".sh-incense.pull"); if (s) startPull(e, s); });
-      cbox.addEventListener("touchstart", e => { const s = e.target.closest(".sh-incense.pull"); if (s) startPull(e, s); }, { passive: false });
+    renderCenser(cbox, frac, burning, censerN, active && st !== 1);
+    if (active && st !== 1) {
+      cbox.addEventListener("mousedown", e => { const s2 = e.target.closest(".sh-incense.pull"); if (s2) startPull(e, s2); });
+      cbox.addEventListener("touchstart", e => { const s2 = e.target.closest(".sh-incense.pull"); if (s2) startPull(e, s2); }, { passive: false });
     }
 
     panel.querySelector(".sh-close").onclick = closeShrine;
@@ -290,19 +292,15 @@
     pullStick();                                       // discard on release
   }
 
-  /* remove one incense stick — the god is not amused; all pulled → re-offer */
+  /* remove one incense stick — the god is not amused. Today's blessing stays; an empty
+     censer just means you can re-light (no reroll until tomorrow). */
   function pullStick() {
     const s = load();
     s.sticks = Math.max(0, (s.sticks == null ? 3 : s.sticks) - 1);
     reactPull();
-    if (s.sticks <= 0) {                 // censer empty → clear today's offering, ritual re-opens
-      save({});
-      st = 0; bows = 0; lit = false; dipped = false;
-      setTimeout(render, 320);
-    } else {
-      save(s);
-      setTimeout(render, 220);
-    }
+    save(s);
+    if (s.sticks <= 0) { st = 0; bows = 0; lit = false; dipped = false; }   // censer empty → re-light option
+    setTimeout(render, s.sticks <= 0 ? 300 : 200);
     refreshBadge();
   }
   function reactPull() {
@@ -317,12 +315,17 @@
     if (st === 0) { lit = false; bows = 0; dipped = false; st = 1; render(); }   // begin the ritual
   }
   function insert() {
-    const b = rollBlessing();
-    save({ day: today(), mult: b.mult, main: b.main, poem: b.poem, insertedAt: Date.now(), sticks: 3 });
+    const s = load();
+    if (s.day === today() && s.mult) {                 // re-lighting: keep today's blessing, fresh incense only
+      s.insertedAt = Date.now(); s.sticks = 3;
+      save(s);
+    } else {                                           // first offering today: roll a new blessing
+      const b = rollBlessing();
+      save({ day: today(), mult: b.mult, main: b.main, poem: b.poem, insertedAt: Date.now(), sticks: 3 });
+      document.dispatchEvent(new CustomEvent("shrine:offered", { detail: { mult: b.mult } }));
+    }
     st = 4;
     render();
-    // little celebratory smoke burst already via censer; nudge the pet if present
-    document.dispatchEvent(new CustomEvent("shrine:offered", { detail: { mult: b.mult } }));
   }
 
   /* ---------- wiring: show only when the shrine item is owned ---------- */
