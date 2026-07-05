@@ -96,7 +96,7 @@
       st2.style.height = h + "px";
       st2.style.left = `calc(50% + ${dx}px)`;
       st2.style.transform = `rotate(${dx * 0.6}deg)`;
-      if (pullable) st2.title = "點擊拔起丟棄";
+      if (pullable) st2.title = "按住拖出即可丟棄";
       box.appendChild(st2);
       if (burning) {
         const sm = $m("span", "sh-smoke go", "︶");
@@ -136,7 +136,7 @@
 
     const sticksN = done ? (s.sticks == null ? 3 : s.sticks) : 0;
     if (done) {
-      inst = "今日已誠心上香 🙏　點香可拔起丟棄，全部拔起可重新上香。";
+      inst = "今日已誠心上香 🙏　按住香拖出即可丟棄，全部拔起可重新上香。";
       blessing = `<div class="sh-blessing"><div class="bl-main">${s.main || "文昌加持"}</div>
         <div class="bl-poem">${s.poem || ""}</div>
         <div class="sh-tag">今日 XP／雲朵幣 ×${(s.mult || 1.2).toFixed(2)}（明日可再上香）</div></div>`;
@@ -161,7 +161,10 @@
 
     const cbox = panel.querySelector(".sh-censer");
     renderCenser(cbox, frac, burning, sticksN, done);
-    if (done) cbox.onclick = e => { if (e.target.closest(".sh-incense.pull")) pullStick(); };
+    if (done) {
+      cbox.addEventListener("mousedown", e => { const s = e.target.closest(".sh-incense.pull"); if (s) startPull(e, s); });
+      cbox.addEventListener("touchstart", e => { const s = e.target.closest(".sh-incense.pull"); if (s) startPull(e, s); }, { passive: false });
+    }
 
     panel.querySelector(".sh-close").onclick = closeShrine;
     const candle = panel.querySelector(".sh-candle");
@@ -170,7 +173,38 @@
     if (act) act.onclick = onAct;
   }
 
-  /* pull an incense stick out and discard it — the god is not amused; all pulled → re-offer */
+  /* drag an incense stick out; releasing the button discards it */
+  let dragInc = null;
+  const touchPt = e => { const t = e.touches && e.touches[0]; return t ? { x: t.clientX, y: t.clientY } : { x: e.clientX, y: e.clientY }; };
+  function startPull(e, stickEl) {
+    if (dragInc) return;
+    e.preventDefault();
+    stickEl.style.visibility = "hidden";              // it's now "in hand"
+    const p = touchPt(e);
+    dragInc = $m("div", "sh-loose-incense");
+    dragInc.style.left = p.x + "px"; dragInc.style.top = p.y + "px";
+    document.body.appendChild(dragInc);
+    window.addEventListener("mousemove", movePull);
+    window.addEventListener("mouseup", endPull);
+    window.addEventListener("touchmove", movePull, { passive: false });
+    window.addEventListener("touchend", endPull);
+  }
+  function movePull(e) {
+    if (!dragInc) return;
+    if (e.cancelable) e.preventDefault();
+    const p = touchPt(e);
+    dragInc.style.left = p.x + "px"; dragInc.style.top = p.y + "px";
+  }
+  function endPull() {
+    window.removeEventListener("mousemove", movePull);
+    window.removeEventListener("mouseup", endPull);
+    window.removeEventListener("touchmove", movePull);
+    window.removeEventListener("touchend", endPull);
+    if (dragInc) { dragInc.remove(); dragInc = null; }
+    pullStick();                                       // discard on release
+  }
+
+  /* remove one incense stick — the god is not amused; all pulled → re-offer */
   function pullStick() {
     const s = load();
     s.sticks = Math.max(0, (s.sticks == null ? 3 : s.sticks) - 1);

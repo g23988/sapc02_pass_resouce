@@ -52,8 +52,14 @@
 .sh-incense::before{content:"";position:absolute;top:-2px;left:-1px;width:5px;height:5px;border-radius:50%;
   background:#ff7a3c;box-shadow:0 0 8px 3px rgba(255,120,40,.8)}
 .sh-incense.dim::before{background:#7a4a2a;box-shadow:none}
-.sh-incense.pull{pointer-events:auto;cursor:pointer;transition:.12s}
-.sh-incense.pull:hover{filter:brightness(1.3);transform:translateY(-3px) rotate(0deg) !important}
+.sh-incense.pull{pointer-events:auto;cursor:grab;transition:filter .12s}
+.sh-incense.pull:hover{filter:brightness(1.3)}
+.sh-incense.pull:active{cursor:grabbing}
+/* incense held while dragging (follows the cursor) */
+.sh-loose-incense{position:fixed;z-index:210;width:4px;height:54px;background:#8a5a3a;border-radius:2px;
+  pointer-events:none;transform:translate(-50%,-72%);filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
+.sh-loose-incense::before{content:"";position:absolute;top:-3px;left:-1px;width:6px;height:6px;border-radius:50%;
+  background:#ff7a3c;box-shadow:0 0 9px 3px rgba(255,120,40,.85)}
 /* rising smoke */
 .sh-smoke{position:absolute;bottom:40px;left:50%;font-size:16px;pointer-events:none;opacity:0}
 .sh-smoke.go{animation:sh-rise 3.2s ease-out infinite}
