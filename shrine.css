@@ -39,6 +39,11 @@
 .sh-deity svg{width:100%;height:auto;filter:drop-shadow(0 4px 10px rgba(0,0,0,.4))}
 .sh-deity.bowing{animation:sh-bow .5s ease}
 @keyframes sh-bow{0%,100%{transform:translateX(-50%) translateY(0)}45%{transform:translateX(-50%) translateY(10px) scale(.98)}}
+.sh-deity.react{animation:sh-shake .44s ease}
+@keyframes sh-shake{0%,100%{transform:translateX(-50%)}20%{transform:translateX(calc(-50% - 6px)) rotate(-2deg)}60%{transform:translateX(calc(-50% + 6px)) rotate(2deg)}}
+.sh-react{position:absolute;top:78px;left:50%;font-size:22px;pointer-events:none;
+  animation:sh-reactfloat .95s ease-out forwards}
+@keyframes sh-reactfloat{0%{opacity:0;transform:translate(-50%,8px)}25%{opacity:1}100%{opacity:0;transform:translate(-50%,-26px)}}
 
 /* censer */
 .sh-censer{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:120px;height:80px}
@@ -47,6 +52,8 @@
 .sh-incense::before{content:"";position:absolute;top:-2px;left:-1px;width:5px;height:5px;border-radius:50%;
   background:#ff7a3c;box-shadow:0 0 8px 3px rgba(255,120,40,.8)}
 .sh-incense.dim::before{background:#7a4a2a;box-shadow:none}
+.sh-incense.pull{pointer-events:auto;cursor:pointer;transition:.12s}
+.sh-incense.pull:hover{filter:brightness(1.3);transform:translateY(-3px) rotate(0deg) !important}
 /* rising smoke */
 .sh-smoke{position:absolute;bottom:40px;left:50%;font-size:16px;pointer-events:none;opacity:0}
 .sh-smoke.go{animation:sh-rise 3.2s ease-out infinite}

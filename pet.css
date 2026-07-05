@@ -193,9 +193,14 @@ html[data-theme="dark"] #pet.blush .cheek{fill:#e07f7f}
 /* quest list in status bubble */
 #petBubble .pb-quests{line-height:1.7}
 
-/* hat wearable */
-#pet .pet-hat{display:none;position:absolute;top:-13px;left:50%;transform:translateX(-50%) rotate(-8deg);font-size:16px}
-#pet.has-hat .pet-hat{display:block}
+/* worn accessories — positioned by slot over the pet (one per slot) */
+.pet-worn{position:absolute;inset:0;pointer-events:none}
+.pet-worn .worn{position:absolute;font-size:15px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.15))}
+.pet-worn .wslot-head{top:-15px;left:50%;transform:translateX(-50%) rotate(-6deg)}
+.pet-worn .wslot-face{top:34%;left:50%;transform:translateX(-50%);font-size:13px}
+.pet-worn .wslot-neck{bottom:-4px;left:50%;transform:translateX(-50%);font-size:14px}
+.pet-worn .wslot-side{top:38%;right:-14px;font-size:16px}
+.pet-worn .wslot-aura{top:-16px;right:-10px;font-size:13px;animation:pet-bob 2.6s ease-in-out infinite}
 
 /* furniture in the lane (behind the pet) */
 .pet-item{position:absolute;right:78px;font-size:20px;pointer-events:none;opacity:.9;z-index:0;transition:transform .3s}

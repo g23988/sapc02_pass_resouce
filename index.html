@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="style.css?v=m2">
 <link rel="stylesheet" href="pet.css?v=pet22">
-<link rel="stylesheet" href="shrine.css?v=sh3">
+<link rel="stylesheet" href="shrine.css?v=sh4">
 </head>
 <body>
 <header class="topbar">
@@ -142,7 +142,7 @@
 
 <div id="toast" class="toast"></div>
 
-<script src="manifest.js?v=c5b4352f"></script>
+<script src="manifest.js?v=sap2"></script>
 <script>
 // pick the active exam (localStorage or first in manifest) and load its data file
 (function () {
@@ -151,11 +151,11 @@
   var sel = localStorage.getItem("current_exam");
   if (ids.indexOf(sel) < 0) sel = ids[0] || null;
   window.CURRENT_EXAM = sel;
-  if (sel) document.write('<scr' + 'ipt src="data/' + sel + '.js?v=c5b4352f"></scr' + 'ipt>');
+  if (sel) document.write('<scr' + 'ipt src="data/' + sel + '.js?v=sap2"></scr' + 'ipt>');
 })();
 </script>
 <script src="app.js?v=m2"></script>
 <script src="pet.js?v=pet22" defer></script>
-<script src="shrine.js?v=sh3" defer></script>
+<script src="shrine.js?v=sh4" defer></script>
 </body>
 </html>

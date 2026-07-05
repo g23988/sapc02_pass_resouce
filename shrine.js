@@ -43,8 +43,8 @@
     <path d="M75 88 L52 96 C40 106 33 150 31 172 L119 172 C117 150 110 106 98 96 Z" fill="url(#shRobe)" stroke="url(#shGold)" stroke-width="2"/>
     <path d="M75 84 L61 96 L69 120 L75 105 Z" fill="#f4efe0" stroke="url(#shGold)" stroke-width="1.4"/>
     <path d="M75 84 L89 96 L81 120 L75 105 Z" fill="#f4efe0" stroke="url(#shGold)" stroke-width="1.4"/>
+    <circle cx="59" cy="68" r="4" fill="#e6bd93" stroke="#d9a878" stroke-width=".7"/><circle cx="91" cy="68" r="4" fill="#e6bd93" stroke="#d9a878" stroke-width=".7"/>
     <ellipse cx="75" cy="66" rx="16" ry="18" fill="#f2c9a0" stroke="#d9a878" stroke-width=".9"/>
-    <circle cx="59" cy="67" r="3.4" fill="#f2c9a0" stroke="#d9a878" stroke-width=".7"/><circle cx="91" cy="67" r="3.4" fill="#f2c9a0" stroke="#d9a878" stroke-width=".7"/>
     <path d="M63 63 q4 -2 8 -1 M79 62 q4 -1 8 1" fill="none" stroke="#2a2320" stroke-width="1.4" stroke-linecap="round"/>
     <path d="M64 68 q3.5 2 7 .6 M79 68 q4 1.4 7 -.6" fill="none" stroke="#2a2320" stroke-width="1.4" stroke-linecap="round"/>
     <path d="M75 70 l-2 7 q2 1.6 4 0" fill="none" stroke="#cf9f70" stroke-width="1.3" stroke-linecap="round"/>
@@ -80,7 +80,8 @@
     if (s.day !== today() || !s.insertedAt) return 0;
     return Math.max(0, 1 - (Date.now() - s.insertedAt) / BURN_MS);
   }
-  function renderCenser(box, frac, burning) {
+  const SLOTS = { 3: [-8, 0, 8], 2: [-6, 6], 1: [0], 0: [] };
+  function renderCenser(box, frac, burning, n, pullable) {
     box.innerHTML = `<svg viewBox="0 0 120 80"><defs>
         <linearGradient id="shBronze" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#d8a24a"/><stop offset="100%" stop-color="#7a5220"/></linearGradient></defs>
       <ellipse cx="60" cy="72" rx="30" ry="6" fill="rgba(0,0,0,.3)"/>
@@ -88,23 +89,23 @@
       <ellipse cx="60" cy="44" rx="26" ry="7" fill="#3a2a12" stroke="#caa24a" stroke-width="1.5"/>
       <path d="M34 48 q-10 0 -10 10 M86 48 q10 0 10 10" fill="none" stroke="url(#shBronze)" stroke-width="4"/>
     </svg>`;
-    if (frac > 0) {
-      const h = 14 + 66 * frac, tips = [-8, 0, 8];
-      tips.forEach((dx, i) => {
-        const st2 = $m("div", "sh-incense" + (burning ? "" : " dim"));
-        st2.style.height = h + "px";
-        st2.style.left = `calc(50% + ${dx}px)`;
-        st2.style.transform = `rotate(${(i - 1) * 5}deg)`;
-        box.appendChild(st2);
-      });
-      if (burning) for (let i = 0; i < 3; i++) {
+    if (frac <= 0 || !n) return;
+    const h = 14 + 66 * frac, slots = SLOTS[n] || [];
+    slots.forEach((dx, i) => {
+      const st2 = $m("div", "sh-incense" + (burning ? "" : " dim") + (pullable ? " pull" : ""));
+      st2.style.height = h + "px";
+      st2.style.left = `calc(50% + ${dx}px)`;
+      st2.style.transform = `rotate(${dx * 0.6}deg)`;
+      if (pullable) st2.title = "點擊拔起丟棄";
+      box.appendChild(st2);
+      if (burning) {
         const sm = $m("span", "sh-smoke go", "︶");
-        sm.style.left = `calc(50% + ${(i - 1) * 8}px)`;
+        sm.style.left = `calc(50% + ${dx}px)`;
         sm.style.bottom = (34 + h) + "px";
         sm.style.animationDelay = (i * 1.0) + "s";
         box.appendChild(sm);
       }
-    }
+    });
   }
 
   /* ---------- open / render ---------- */
@@ -133,8 +134,9 @@
     const frac = burnFrac(), burning = frac > 0.02;
     let inst = "", actLabel = "", actId = "shAct", blessing = "";
 
+    const sticksN = done ? (s.sticks == null ? 3 : s.sticks) : 0;
     if (done) {
-      inst = "今日已誠心上香 🙏";
+      inst = "今日已誠心上香 🙏　點香可拔起丟棄，全部拔起可重新上香。";
       blessing = `<div class="sh-blessing"><div class="bl-main">${s.main || "文昌加持"}</div>
         <div class="bl-poem">${s.poem || ""}</div>
         <div class="sh-tag">今日 XP／雲朵幣 ×${(s.mult || 1.2).toFixed(2)}（明日可再上香）</div></div>`;
@@ -157,7 +159,9 @@
       ${actLabel ? `<button class="sh-act" id="${actId}">${actLabel}</button>` : ""}
       ${blessing}`;
 
-    renderCenser(panel.querySelector(".sh-censer"), frac, burning);
+    const cbox = panel.querySelector(".sh-censer");
+    renderCenser(cbox, frac, burning, sticksN, done);
+    if (done) cbox.onclick = e => { if (e.target.closest(".sh-incense.pull")) pullStick(); };
 
     panel.querySelector(".sh-close").onclick = closeShrine;
     const candle = panel.querySelector(".sh-candle");
@@ -165,6 +169,29 @@
     const act = panel.querySelector("#shAct");
     if (act) act.onclick = onAct;
   }
+
+  /* pull an incense stick out and discard it — the god is not amused; all pulled → re-offer */
+  function pullStick() {
+    const s = load();
+    s.sticks = Math.max(0, (s.sticks == null ? 3 : s.sticks) - 1);
+    reactPull();
+    if (s.sticks <= 0) {                 // censer empty → clear today's offering, ritual re-opens
+      save({});
+      st = 0; bows = 0;
+      setTimeout(render, 320);
+    } else {
+      save(s);
+      setTimeout(render, 220);
+    }
+    refreshBadge();
+  }
+  function reactPull() {
+    const d = panel && panel.querySelector(".sh-deity");
+    if (d) { d.classList.remove("react"); void d.offsetWidth; d.classList.add("react"); setTimeout(() => d && d.classList.remove("react"), 460); }
+    const stage = panel && panel.querySelector(".sh-stage");
+    if (stage) { const f = $m("span", "sh-react", pick(["⁉️", "😯", "…", "🙁", "😾"])); stage.appendChild(f); setTimeout(() => f.remove(), 950); }
+  }
+  const pick = a => a[Math.floor(Math.random() * a.length)];
 
   function onAct() {
     if (st === 0) { st = 1; render(); }
@@ -184,7 +211,7 @@
   }
   function insert() {
     const b = rollBlessing();
-    save({ day: today(), mult: b.mult, main: b.main, poem: b.poem, insertedAt: Date.now() });
+    save({ day: today(), mult: b.mult, main: b.main, poem: b.poem, insertedAt: Date.now(), sticks: 3 });
     st = 4;
     render();
     // little celebratory smoke burst already via censer; nudge the pet if present
