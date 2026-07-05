@@ -91,10 +91,15 @@
     if (h < 0.02) return;
     S.hunger = clamp(S.hunger - h * 0.8, 12, 100);
     S.mood = clamp(S.mood - h * 0.5, 25, 100);
-    S.clean = clamp((S.clean == null ? 90 : S.clean) - h * 0.7, 0, 100);  // slowly gets grubby
+    S.clean = clamp((S.clean == null ? 90 : S.clean) - h * 0.4, 0, 100);  // idle drift; playing is the main mess
     S.dusty = h >= 72;                       // long absence → "想你" greeting
     S.lastTick = Date.now();
     save();
+  }
+  /* every action wears the pet down a little — gets grubbier and hungrier from playing */
+  function wear(cl, hu) {
+    S.clean = clamp((S.clean == null ? 90 : S.clean) - cl, 0, 100);
+    S.hunger = clamp(S.hunger - hu, 12, 100);
   }
 
   /* ---------- DOM ----------
@@ -311,14 +316,15 @@
     if (S.hunger < 25 && Math.random() < 0.15) { say(pick(HUNGRY), 2600); return; }
     if (S.stage === 4 && Math.random() < 0.05) { say(`「${(FORMS[S.form] || FORMS.arch).line}」`, 2600); return; }
     if (!fx.exam && Math.random() < 0.02) { spawnNPC(); return; }
+    if (S.clean > 40 && Math.random() < 0.02) { playMud(); return; }   // rare mud play (skips if already dirty)
     if (Math.random() < 0.05) { say(chatterLine(), 2800); return; }
     /* personality follows mood: happy = playful, glum = withdrawn */
     const playful = S.mood >= 80, glum = S.mood < 40;
     const walkP = glum ? 0.28 : playful ? 0.55 : 0.45;
     const r = Math.random();
-    if (r < walkP) walkTo(y + (Math.random() * 320 - 160));
+    if (r < walkP) { walkTo(y + (Math.random() * 320 - 160)); wear(0.06, 0.04); save(); }
     else if (r < walkP + 0.08) yawn();
-    else if (r < walkP + 0.15) oneShot("squish", 400);     // little stretch
+    else if (r < walkP + 0.15) { oneShot("squish", 400); wear(0.05, 0.03); }   // little stretch
     else if (r < walkP + 0.23) glance();
     else if (r < walkP + 0.31) {
       if (playful) float("♪");                             // humming
@@ -326,6 +332,24 @@
     }
     else if (S.items && S.items.ball && r < walkP + 0.38) goToItem("ball", kickBall);
     else if (S.items && S.items.plant && r < walkP + 0.44) goToItem("plant", waterPlant);
+  }
+  /* rare mischief: trot to the very bottom and play in the mud — fun, but very messy */
+  function playMud() {
+    const go = () => {
+      mode = "busy"; refreshLook();
+      pet.classList.add("kicking");
+      [0, 140, 280, 420, 560].forEach(t => setTimeout(() => float(pick(["🟤", "💩", "💦"])), t));
+      wear(30, 2); S.mood = clamp(S.mood + 6, 0, 100);      // messy but delightful
+      express("happyUntil", 2200);
+      say(pick(["泥巴好好玩～ 😜", "挖呀挖呀挖 🕳️", "髒髒的……但好開心！"]), 2800);
+      setTimeout(() => {
+        if (!pet) return;
+        pet.classList.remove("kicking");
+        if (mode === "busy") { mode = "idle"; refreshLook(); }
+        save();
+      }, 1700);
+    };
+    if (!walkTo(yMax(), go)) go();                          // down to the bottom first
   }
   /* walk right onto an item (centre the pet on it), then act on arrival — no early trigger */
   function goToItem(id, action) {
@@ -485,6 +509,7 @@
   function spin() {
     wake();
     if (!pet || S.stage === 0) return;
+    wear(0.5, 0.3);
     mode = "busy"; refreshLook();
     pet.classList.add("spinning");
     setTimeout(() => {
@@ -715,6 +740,7 @@
   /* item interactions — each is a busy action with its own animation */
   function kickBall() {
     if (!pet) return;
+    wear(0.8, 0.5);
     mode = "busy"; refreshLook();
     pet.classList.add("kicking");
     setTimeout(() => bounceItem("ball"), 230);            // contact moment: ball takes off
@@ -727,6 +753,7 @@
   }
   function waterPlant() {
     if (!pet) return;
+    wear(0.6, 0.4);
     mode = "busy"; refreshLook();
     pet.classList.add("pouring");
     [0, 260, 520].forEach(t => setTimeout(dropWater, 320 + t));   // three droplets
@@ -820,6 +847,7 @@
       if (!pet || !looseBall) return;
       looseBall.remove(); looseBall = null;
       carrying = true; refreshLook();
+      wear(1.0, 0.6);
       float("⚽");
       if (Math.random() < 0.7) say(pick(["撿到了！", "球球我來救你！", "接好囉～"]), 1600);
       const homeY = clamp(Math.round(window.innerHeight * ITEM_SPOTS.ball) - 16, Y_MIN, yMax());

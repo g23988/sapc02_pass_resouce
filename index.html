@@ -6,7 +6,7 @@
 <title>SAP-C02 刷題 · AWS Solutions Architect Professional</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="style.css?v=m2">
-<link rel="stylesheet" href="pet.css?v=pet23">
+<link rel="stylesheet" href="pet.css?v=pet25">
 <link rel="stylesheet" href="shrine.css?v=sh7">
 </head>
 <body>
@@ -142,7 +142,7 @@
 
 <div id="toast" class="toast"></div>
 
-<script src="manifest.js?v=sap5"></script>
+<script src="manifest.js?v=sap6"></script>
 <script>
 // pick the active exam (localStorage or first in manifest) and load its data file
 (function () {
@@ -151,11 +151,11 @@
   var sel = localStorage.getItem("current_exam");
   if (ids.indexOf(sel) < 0) sel = ids[0] || null;
   window.CURRENT_EXAM = sel;
-  if (sel) document.write('<scr' + 'ipt src="data/' + sel + '.js?v=sap5"></scr' + 'ipt>');
+  if (sel) document.write('<scr' + 'ipt src="data/' + sel + '.js?v=sap6"></scr' + 'ipt>');
 })();
 </script>
 <script src="app.js?v=m2"></script>
-<script src="pet.js?v=pet22" defer></script>
+<script src="pet.js?v=pet25" defer></script>
 <script src="shrine.js?v=sh7" defer></script>
 </body>
 </html>
