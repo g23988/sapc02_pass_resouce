@@ -47,7 +47,8 @@
     <circle cx="59" cy="67" r="3.4" fill="#f2c9a0" stroke="#d9a878" stroke-width=".7"/><circle cx="91" cy="67" r="3.4" fill="#f2c9a0" stroke="#d9a878" stroke-width=".7"/>
     <path d="M63 63 q4 -2 8 -1 M79 62 q4 -1 8 1" fill="none" stroke="#2a2320" stroke-width="1.4" stroke-linecap="round"/>
     <path d="M64 68 q3.5 2 7 .6 M79 68 q4 1.4 7 -.6" fill="none" stroke="#2a2320" stroke-width="1.4" stroke-linecap="round"/>
-    <path d="M72 71 q7 3 -0 8" fill="none" stroke="#1c1c1c" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M75 70 l-2 7 q2 1.6 4 0" fill="none" stroke="#cf9f70" stroke-width="1.3" stroke-linecap="round"/>
+    <path d="M74 78 C70 80 66 82 64 85 M76 78 C80 80 84 82 86 85" fill="none" stroke="#1c1c1c" stroke-width="1.8" stroke-linecap="round"/>
     <path d="M64 84 C60 108 68 124 75 130 C82 124 90 108 86 84 C81 93 69 93 64 84 Z" fill="#1d1c1c"/>
     <path d="M60 45 L62 30 C66 22 84 22 88 30 L90 45 Z" fill="url(#shCrown)" stroke="url(#shGold)" stroke-width="1.6"/>
     <rect x="60" y="44" width="30" height="9" rx="3" fill="url(#shCrown)" stroke="url(#shGold)" stroke-width="1.6"/>
