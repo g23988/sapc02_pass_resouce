@@ -142,7 +142,7 @@
 
 <div id="toast" class="toast"></div>
 
-<script src="manifest.js?v=sap8"></script>
+<script src="manifest.js?v=sap9"></script>
 <script>
 // pick the active exam (localStorage or first in manifest) and load its data file
 (function () {
@@ -151,7 +151,7 @@
   var sel = localStorage.getItem("current_exam");
   if (ids.indexOf(sel) < 0) sel = ids[0] || null;
   window.CURRENT_EXAM = sel;
-  if (sel) document.write('<scr' + 'ipt src="data/' + sel + '.js?v=sap8"></scr' + 'ipt>');
+  if (sel) document.write('<scr' + 'ipt src="data/' + sel + '.js?v=sap9"></scr' + 'ipt>');
 })();
 </script>
 <script src="app.js?v=m2"></script>
