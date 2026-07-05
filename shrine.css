@@ -1,0 +1,78 @@
+/* shrine.css — 文昌殿 shrine. Independent of the quiz app; grants a daily luck buff
+   read by pet.js via localStorage. Remove shrine.js/shrine.css to uninstall. */
+
+/* entry button (bottom-left corner) */
+#shrineBtn{
+  position:fixed;left:14px;bottom:14px;z-index:91;
+  width:44px;height:44px;border-radius:50%;border:1px solid #caa24a;
+  background:linear-gradient(180deg,#8f1d1c,#5a0f12);color:#f4d27a;font-size:22px;
+  cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.35);transition:.15s;line-height:1;
+}
+#shrineBtn:hover{transform:scale(1.08);border-color:#f4d27a}
+#shrineBtn .dot{position:absolute;top:-2px;right:-2px;width:12px;height:12px;border-radius:50%;
+  background:#e8b64a;border:2px solid #5a0f12;animation:sh-pulse 1.6s infinite}
+@keyframes sh-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.3);opacity:.6}}
+@media (max-width:760px){ #shrineBtn{width:38px;height:38px;font-size:18px;bottom:64px} }
+
+/* overlay + panel */
+#shrineOverlay{
+  position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
+  background:rgba(10,4,4,.62);backdrop-filter:blur(3px);padding:18px;
+}
+#shrinePanel{
+  width:min(360px,100%);max-height:92vh;overflow-y:auto;border-radius:16px;
+  background:radial-gradient(120% 80% at 50% 12%,#6d1416,#3c0a0c 80%);
+  border:3px solid #e7b64b;box-shadow:0 24px 60px rgba(0,0,0,.6);
+  padding:16px 18px 20px;color:#f6e8c8;text-align:center;position:relative;
+  font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+}
+#shrinePanel .sh-close{position:absolute;top:10px;right:12px;border:0;background:none;
+  color:#d8b48a;font-size:20px;cursor:pointer;line-height:1}
+#shrinePanel .sh-close:hover{color:#f4d27a}
+.sh-title{font-family:"Noto Serif TC","Songti TC","Kaiti TC",serif;font-size:22px;font-weight:800;
+  letter-spacing:.28em;color:#f4d27a;margin:2px 0 4px;text-shadow:0 0 12px rgba(236,194,102,.3)}
+.sh-sub{font-size:12px;letter-spacing:.12em;color:#d8b48a;margin-bottom:8px}
+
+/* stage: deity + smoke + censer */
+.sh-stage{position:relative;height:230px;margin:6px 0 2px}
+.sh-deity{position:absolute;top:0;left:50%;transform:translateX(-50%);width:150px}
+.sh-deity svg{width:100%;height:auto;filter:drop-shadow(0 4px 10px rgba(0,0,0,.4))}
+.sh-deity.bowing{animation:sh-bow .5s ease}
+@keyframes sh-bow{0%,100%{transform:translateX(-50%) translateY(0)}45%{transform:translateX(-50%) translateY(10px) scale(.98)}}
+
+/* censer */
+.sh-censer{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:120px;height:80px}
+/* incense sticks (in the censer) */
+.sh-incense{position:absolute;bottom:34px;width:3px;background:#8a5a3a;border-radius:2px;transform-origin:bottom center}
+.sh-incense::before{content:"";position:absolute;top:-2px;left:-1px;width:5px;height:5px;border-radius:50%;
+  background:#ff7a3c;box-shadow:0 0 8px 3px rgba(255,120,40,.8)}
+.sh-incense.dim::before{background:#7a4a2a;box-shadow:none}
+/* rising smoke */
+.sh-smoke{position:absolute;bottom:40px;left:50%;font-size:16px;pointer-events:none;opacity:0}
+.sh-smoke.go{animation:sh-rise 3.2s ease-out infinite}
+@keyframes sh-rise{0%{opacity:0;transform:translate(-50%,0) scale(.6)}
+  20%{opacity:.55}100%{opacity:0;transform:translate(calc(-50% + 10px),-90px) scale(1.5)}}
+
+/* hand holding incense during the ritual */
+.sh-hand{position:absolute;bottom:44px;left:50%;transform:translateX(-50%);font-size:34px;transition:.3s}
+.sh-hand .sticks{position:absolute;bottom:26px;left:50%;transform:translateX(-50%) rotate(6deg);
+  display:flex;gap:2px}
+.sh-hand .st{width:3px;height:46px;background:#8a5a3a;border-radius:2px;position:relative}
+.sh-hand.lit .st::before{content:"";position:absolute;top:-2px;left:-1px;width:5px;height:5px;border-radius:50%;
+  background:#ff7a3c;box-shadow:0 0 8px 3px rgba(255,120,40,.85)}
+.sh-candle{position:absolute;bottom:60px;right:16px;font-size:26px;cursor:pointer;transition:.15s}
+.sh-candle:hover{transform:scale(1.12)}
+.sh-candle.hint{animation:sh-pulse 1.2s infinite}
+
+/* instruction + actions */
+.sh-inst{min-height:20px;font-size:13.5px;letter-spacing:.06em;color:#f0d9a8;margin:8px 0}
+.sh-act{border:0;background:linear-gradient(180deg,#f0c65e,#c8962f);color:#4a1010;font-weight:800;
+  font-size:15px;padding:11px 24px;border-radius:11px;cursor:pointer;transition:.14s;letter-spacing:.08em}
+.sh-act:hover{filter:brightness(1.06)}
+.sh-act:disabled{opacity:.5;cursor:default}
+.sh-blessing{margin-top:10px;padding:12px 14px;border-radius:12px;background:rgba(0,0,0,.28);
+  border:1px solid #b8862f}
+.sh-blessing .bl-main{font-family:"Noto Serif TC","Kaiti TC",serif;font-size:17px;font-weight:800;color:#f4d27a;letter-spacing:.1em}
+.sh-blessing .bl-poem{font-size:12.5px;color:#e4c99a;margin-top:6px;letter-spacing:.08em;line-height:1.7}
+.sh-tag{display:inline-block;margin-top:8px;font-size:12px;color:#8fd0a0;letter-spacing:.1em}
+@media (prefers-reduced-motion:reduce){ .sh-smoke.go,.sh-deity.bowing,.sh-candle.hint,#shrineBtn .dot{animation:none} }

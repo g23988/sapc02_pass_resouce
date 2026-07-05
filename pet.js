@@ -14,6 +14,7 @@
     stage: 0,        // 0 蛋, 1 幼雲, 2 小雲寶, 3 大雲寶, 4 雲王
     feeds: 0, xp: 0,
     coins: 0, items: {},    // shop: 雲朵幣（與 XP 等量入帳）與家具/玩具
+    acc: {}, worn: {}, gachaDay: "",   // accessories owned / equipped-per-slot / last free-spin day
     hunger: 70, mood: 80, clean: 90,   // 0–100
     lastTick: Date.now(),
     day: "", fedIds: [],    // daily anti-farm guard
@@ -35,7 +36,11 @@
       else if (S.stage === 1 && S.xp >= 25) S.stage = 2;
     }
     if (v < 3) S.coins = (S.coins || 0) + S.xp;   // v3: shop — backfill coins from lifetime xp
-    S.ver = 3;
+    if (v < 4) {                                   // v4: accessories/wardrobe — migrate the old shop hat
+      S.acc = S.acc || {}; S.worn = S.worn || {};
+      if (S.items && S.items.hat) { S.acc.tophat = true; S.worn.head = "tophat"; delete S.items.hat; }
+    }
+    S.ver = 4;
   }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} };
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -141,9 +146,9 @@
     <span class="pet-sweat">💧</span>
     <span class="pet-sun">☀️</span>
     <span class="pet-rain">🌧️</span>
-    <span class="pet-hat">🎩</span>
     <span class="pet-carry">⚽</span>
-  </div>`;
+  </div>
+  <div class="pet-worn"></div>`;
 
   function build() {
     layer = $make("div"); layer.id = "petLayer";
@@ -153,6 +158,8 @@
       if (e.target.id === "petRebirth") doRebirth();
       else if (e.target.id === "petCard") exportCard();
       else if (e.target.id === "petShopBtn") toggleShop();
+      else if (e.target.id === "petWardrobeBtn") toggleWardrobe();
+      else if (e.target.id === "petGachaBtn") toggleGacha();
     });
     layer.append(pet, bubble);
     document.body.appendChild(layer);
@@ -160,6 +167,7 @@
     place(0);
     placeItems();
     refreshLook();
+    renderWorn();
     pet.addEventListener("click", pat);
     pet.addEventListener("dblclick", spin);
     pet.addEventListener("mousedown", onGrab);
@@ -183,6 +191,8 @@
     cancelAnimationFrame(ballRAF); clearTimeout(fetchT); ballDrag = false;
     if (looseBall) { looseBall.remove(); looseBall = null; }
     if (shopEl) { shopEl.remove(); shopEl = null; }
+    if (wardrobeEl) { wardrobeEl.remove(); wardrobeEl = null; }
+    if (gachaEl) { gachaEl.remove(); gachaEl = null; }
     despawnBoss(false);
     document.removeEventListener("mousemove", onMouse);
     document.removeEventListener("mousemove", onLook);
@@ -206,7 +216,6 @@
     pet.classList.add("stage-" + S.stage, (mode === "walk" || mode === "fetch") ? "walking" : mode);
     if (S.stage === 4) pet.classList.add("form-" + (S.form || "arch"));
     else if (S.stage === 3) pet.classList.add("tend-" + topAff());   // 大雲寶：傾向雛形配件
-    if (S.stage > 0 && S.items && S.items.hat) pet.classList.add("has-hat");
     if (carrying) pet.classList.add("carrying");
     if (mode === "sleeping" && S.items && S.items.bed) pet.classList.add("on-bed");
     if (S.stage > 0) {
@@ -640,11 +649,13 @@
     { id: "shower", name: "蓮蓬頭", emoji: "🚿", price: 35, desc: "拖到雲寶身上幫牠洗澡" },
     { id: "lantern", name: "小燈籠", emoji: "🏮", price: 40, desc: "深夜會亮起來陪刷題" },
     { id: "bed", name: "雲朵小床", emoji: "🛏️", price: 50, desc: "想睡時會回床上睡" },
-    { id: "hat", name: "小禮帽", emoji: "🎩", price: 60, desc: "戴上變紳士雲" },
+    { id: "shrine", name: "文昌神龕", emoji: "⛩️", price: 80, desc: "左下角開啟文昌殿，每日上香求 XP／雲朵幣加成" },
   ];
   let shopEl = null;
   function toggleShop() {
     if (shopEl) { shopEl.remove(); shopEl = null; return; }
+    if (wardrobeEl) { wardrobeEl.remove(); wardrobeEl = null; }   // panels share the slot — one at a time
+    if (gachaEl) { gachaEl.remove(); gachaEl = null; }
     shopEl = $make("div"); shopEl.id = "petShop";
     shopEl.addEventListener("click", e => {
       if (e.target.id === "shopClose") { toggleShop(); return; }
@@ -677,6 +688,7 @@
       placeItems(); refreshLook();
       express("happyUntil", 3000);
       say(pick(["謝謝！我會好好珍惜 🥹", "新東西！開心～", `這就是傳說中的……${it.name}！`]), 2600);
+      document.dispatchEvent(new CustomEvent("pet:itemBought", { detail: { id } })); // shrine.js hook (no-op if absent)
     }
     save(); renderShop();
   }
@@ -896,6 +908,164 @@
     }, 1800);
   }
 
+  /* ---------- accessories: 50 wearables across 5 slots, worn one-per-slot ---------- */
+  const ACCESSORIES = [
+    // head
+    { id: "tophat", e: "🎩", n: "小禮帽", slot: "head", r: "c" },
+    { id: "cap", e: "🧢", n: "棒球帽", slot: "head", r: "c" },
+    { id: "sunhat", e: "👒", n: "遮陽帽", slot: "head", r: "c" },
+    { id: "grad", e: "🎓", n: "學士帽", slot: "head", r: "r" },
+    { id: "crown", e: "👑", n: "小皇冠", slot: "head", r: "e" },
+    { id: "helmet", e: "🪖", n: "鋼盔", slot: "head", r: "r" },
+    { id: "rescue", e: "⛑️", n: "工程帽", slot: "head", r: "r" },
+    { id: "bowhead", e: "🎀", n: "頭上蝴蝶結", slot: "head", r: "c" },
+    { id: "sakura", e: "🌸", n: "櫻花", slot: "head", r: "c" },
+    { id: "hibiscus", e: "🌺", n: "扶桑花", slot: "head", r: "c" },
+    { id: "tulip", e: "🌷", n: "鬱金香", slot: "head", r: "c" },
+    { id: "mushroom", e: "🍄", n: "蘑菇", slot: "head", r: "r" },
+    { id: "chick", e: "🐣", n: "小雞", slot: "head", r: "r" },
+    { id: "pumpkin", e: "🎃", n: "南瓜頭", slot: "head", r: "e" },
+    { id: "xmas", e: "🎄", n: "聖誕樹", slot: "head", r: "e" },
+    { id: "starhead", e: "⭐", n: "星星", slot: "head", r: "r" },
+    { id: "moonhead", e: "🌙", n: "月亮", slot: "head", r: "r" },
+    { id: "snow", e: "❄️", n: "雪花", slot: "head", r: "c" },
+    { id: "maple", e: "🍁", n: "楓葉", slot: "head", r: "c" },
+    { id: "rainbow", e: "🌈", n: "彩虹", slot: "head", r: "e" },
+    { id: "flame", e: "🔥", n: "火焰", slot: "head", r: "e" },
+    { id: "cloudcap", e: "☁️", n: "小雲帽", slot: "head", r: "r" },
+    { id: "phones", e: "🎧", n: "耳機", slot: "head", r: "r" },
+    // face
+    { id: "glasses", e: "👓", n: "眼鏡", slot: "face", r: "c" },
+    { id: "shades", e: "🕶️", n: "墨鏡", slot: "face", r: "r" },
+    { id: "goggles", e: "🥽", n: "護目鏡", slot: "face", r: "r" },
+    { id: "monocle", e: "🧐", n: "單片眼鏡", slot: "face", r: "e" },
+    // neck
+    { id: "scarf", e: "🧣", n: "圍巾", slot: "neck", r: "c" },
+    { id: "tie", e: "👔", n: "領帶", slot: "neck", r: "c" },
+    { id: "beads", e: "📿", n: "念珠", slot: "neck", r: "r" },
+    { id: "bell", e: "🔔", n: "鈴鐺", slot: "neck", r: "c" },
+    { id: "ribbon", e: "🎗️", n: "緞帶", slot: "neck", r: "r" },
+    { id: "medal", e: "🏅", n: "獎牌", slot: "neck", r: "e" },
+    // side (held)
+    { id: "balloon", e: "🎈", n: "氣球", slot: "side", r: "c" },
+    { id: "umbrella", e: "☂️", n: "雨傘", slot: "side", r: "c" },
+    { id: "wand", e: "🪄", n: "魔法棒", slot: "side", r: "e" },
+    { id: "book", e: "📖", n: "書本", slot: "side", r: "c" },
+    { id: "flag", e: "🚩", n: "旗子", slot: "side", r: "c" },
+    { id: "lollipop", e: "🍭", n: "棒棒糖", slot: "side", r: "c" },
+    { id: "mic", e: "🎤", n: "麥克風", slot: "side", r: "r" },
+    { id: "sword", e: "⚔️", n: "劍", slot: "side", r: "e" },
+    { id: "shieldh", e: "🛡️", n: "盾牌", slot: "side", r: "r" },
+    { id: "torch", e: "🔦", n: "手電筒", slot: "side", r: "c" },
+    { id: "rod", e: "🎣", n: "釣竿", slot: "side", r: "r" },
+    { id: "guitar", e: "🎸", n: "吉他", slot: "side", r: "e" },
+    // aura (floating companion)
+    { id: "bee", e: "🐝", n: "小蜜蜂", slot: "aura", r: "r" },
+    { id: "bfly", e: "🦋", n: "蝴蝶", slot: "aura", r: "r" },
+    { id: "bird", e: "🐤", n: "小鳥", slot: "aura", r: "r" },
+    { id: "sparkle", e: "✨", n: "閃光", slot: "aura", r: "c" },
+    { id: "note", e: "🎵", n: "音符", slot: "aura", r: "c" },
+    { id: "ladybug", e: "🐞", n: "瓢蟲", slot: "aura", r: "r" },
+    { id: "ufo", e: "🛸", n: "幽浮", slot: "aura", r: "e" },
+  ];
+  const ACC_BY_ID = Object.fromEntries(ACCESSORIES.map(a => [a.id, a]));
+  const RARITY = { c: { w: 60, name: "普通", coins: 8 }, r: { w: 30, name: "稀有", coins: 18 }, e: { w: 10, name: "史詩", coins: 40 } };
+  const SLOT_NAME = { head: "頭部", face: "臉部", neck: "頸部", side: "手持", aura: "夥伴" };
+
+  function renderWorn() {
+    if (!pet) return;
+    const box = pet.querySelector(".pet-worn");
+    if (!box) return;
+    box.innerHTML = "";
+    for (const slot in (S.worn || {})) {
+      const a = ACC_BY_ID[S.worn[slot]];
+      if (a) box.appendChild($make("span", "worn wslot-" + a.slot, a.e));
+    }
+  }
+  function equip(id) {
+    const a = ACC_BY_ID[id]; if (!a || !S.acc[id]) return;
+    if (S.worn[a.slot] === id) delete S.worn[a.slot];   // tap again → take off
+    else S.worn[a.slot] = id;
+    renderWorn(); save(); renderWardrobe();
+  }
+
+  /* ---------- wardrobe panel ---------- */
+  let wardrobeEl = null;
+  function toggleWardrobe() {
+    if (wardrobeEl) { wardrobeEl.remove(); wardrobeEl = null; return; }
+    if (shopEl) { shopEl.remove(); shopEl = null; }
+    wardrobeEl = $make("div"); wardrobeEl.id = "petShop";   // reuse shop panel styling
+    wardrobeEl.addEventListener("click", e => {
+      if (e.target.id === "shopClose") { toggleWardrobe(); return; }
+      if (e.target.id === "wardrobeStrip") { S.worn = {}; renderWorn(); save(); renderWardrobe(); return; }
+      const id = e.target.closest("[data-equip]")?.dataset.equip;
+      if (id) equip(id);
+    });
+    document.body.appendChild(wardrobeEl);
+    renderWardrobe();
+  }
+  function renderWardrobe() {
+    if (!wardrobeEl) return;
+    const owned = ACCESSORIES.filter(a => S.acc[a.id]);
+    const worn = new Set(Object.values(S.worn || {}));
+    const body = owned.length
+      ? owned.map(a =>
+          `<div class="shop-item" data-equip="${a.id}" style="cursor:pointer">
+             <span class="shop-emoji">${a.e}</span>
+             <div class="shop-body"><b>${a.n}</b><div class="shop-desc">${SLOT_NAME[a.slot]} · ${RARITY[a.r].name}</div></div>
+             ${worn.has(a.id) ? `<span class="shop-owned">穿戴中</span>` : `<span class="shop-buy">穿上</span>`}
+           </div>`).join("")
+      : `<div class="shop-desc" style="padding:10px 2px">還沒有配件～去扭蛋轉幾個吧！</div>`;
+    wardrobeEl.innerHTML = `<div class="shop-head">👕 衣櫃 <span class="shop-coin">${owned.length}/${ACCESSORIES.length}</span><button id="shopClose">✕</button></div>`
+      + body + (Object.keys(S.worn || {}).length ? `<button id="wardrobeStrip" class="pb-btn" style="margin-top:8px">全部脫下</button>` : "");
+  }
+
+  /* ---------- gacha (扭蛋): variable-reward accessory draw, first spin each day free ---------- */
+  const GACHA_COST = 25;
+  function rollAccessory() {
+    const pool = [];
+    for (const a of ACCESSORIES) for (let i = 0; i < RARITY[a.r].w; i++) pool.push(a);
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  function spinGacha() {
+    const free = S.gachaDay !== today();
+    if (!free && (S.coins || 0) < GACHA_COST) { say("雲朵幣不夠扭蛋……再刷幾題吧 💰", 2400); return; }
+    if (free) S.gachaDay = today(); else S.coins -= GACHA_COST;
+    const a = rollAccessory();
+    const dup = !!S.acc[a.id];
+    if (dup) { const refund = RARITY[a.r].coins; S.coins += refund; }
+    else { S.acc[a.id] = true; }
+    save();
+    oneShot("hatching", 900);
+    if (a.r === "e") express("starUntil", 4000);
+    [0, 200, 400].forEach(t => setTimeout(() => float(a.e), t));
+    say(dup ? `${a.e} ${a.n}（重複，退 ${RARITY[a.r].coins} 幣）`
+            : `${a.r === "e" ? "✨史詩✨ " : a.r === "r" ? "稀有！ " : ""}抽到 ${a.e} ${a.n}！${free ? "（今日免費）" : ""}`, 3400);
+    if (gachaEl) renderGacha();
+    if (wardrobeEl) renderWardrobe();
+  }
+  let gachaEl = null;
+  function toggleGacha() {
+    if (gachaEl) { gachaEl.remove(); gachaEl = null; return; }
+    if (shopEl) { shopEl.remove(); shopEl = null; }
+    if (wardrobeEl) { wardrobeEl.remove(); wardrobeEl = null; }
+    gachaEl = $make("div"); gachaEl.id = "petShop";
+    gachaEl.addEventListener("click", e => {
+      if (e.target.id === "shopClose") { toggleGacha(); return; }
+      if (e.target.id === "gachaSpin") spinGacha();
+    });
+    document.body.appendChild(gachaEl);
+    renderGacha();
+  }
+  function renderGacha() {
+    if (!gachaEl) return;
+    const free = S.gachaDay !== today();
+    const owned = ACCESSORIES.filter(a => S.acc[a.id]).length;
+    gachaEl.innerHTML = `<div class="shop-head">🥚 扭蛋機 <span class="shop-coin">💰 ${S.coins || 0}</span><button id="shopClose">✕</button></div>
+      <div class="shop-desc" style="padding:4px 2px 10px">轉出隨機配件（普通/稀有/史詩）。已收集 ${owned}/${ACCESSORIES.length}。<br>重複會退還雲朵幣。</div>
+      <button id="gachaSpin" class="pb-btn" style="width:100%;padding:10px">${free ? "🎁 今日免費扭蛋！" : `扭一次 💰${GACHA_COST}`}</button>`;
+  }
+
   /* ---------- shareable pet card (canvas → PNG download) ---------- */
   function exportCard() {
     const c = document.createElement("canvas"); c.width = 520; c.height = 320;
@@ -949,7 +1119,13 @@
     while (rem >= need) { rem -= need; lv++; need = 15 * lv; }
     return { lv, rem, need };
   }
+  /* daily 文昌 blessing from the shrine (shrine.js writes it; 1 = no buff) */
+  function shrineMult() {
+    try { const s = JSON.parse(localStorage.getItem("app_shrine")); return (s && s.day === today() && s.mult) ? s.mult : 1; }
+    catch { return 1; }
+  }
   function gainXp(n) {
+    n = Math.round(n * shrineMult());   // 文昌加持：當日 XP／雲朵幣加成
     const before = levelOf(S.xp).lv;
     S.xp += n;
     S.coins = (S.coins || 0) + n;   // 雲朵幣與 XP 等量入帳
@@ -1057,13 +1233,15 @@
       ? `<div class="pb-next">圖鑑：${DEX_ORDER.map(f => dex.some(d => d.form === f) ? DEX_EMOJI[f] : "▫️").join(" ")}</div>`
       : "";
     const t = S.todayStats || {};
-    const todayLine = `<div class="pb-next">今日：✓${t.c || 0} ✗${t.w || 0} · +${t.xp || 0} XP</div>`;
+    const sm = shrineMult();
+    const buffLine = sm > 1 ? `<div class="pb-next">⛩️ 文昌加持中：XP／幣 ×${sm.toFixed(2)}</div>` : "";
+    const todayLine = `<div class="pb-next">今日：✓${t.c || 0} ✗${t.w || 0} · +${t.xp || 0} XP</div>` + buffLine;
     const qList = ((S.quests || {}).list || []);
     const questLines = qList.length
       ? `<div class="pb-next pb-quests">📋 今日委託<br>${qList.map(q =>
           `${q.done ? "✅" : "▫️"} ${QUEST_DESC[q.type](q.target)}${q.done ? "" : `（${q.got}/${q.target}）`}`).join("<br>")}</div>`
       : "";
-    const btns = `<div>${S.stage === 4 ? `<button id="petRebirth" class="pb-btn">🥚 轉生</button>` : ""}<button id="petShopBtn" class="pb-btn">🛍️ 商城</button><button id="petCard" class="pb-btn">📇 名片</button></div>`;
+    const btns = `<div>${S.stage === 4 ? `<button id="petRebirth" class="pb-btn">🥚 轉生</button>` : ""}<button id="petGachaBtn" class="pb-btn">🥚 扭蛋</button><button id="petWardrobeBtn" class="pb-btn">👕 衣櫃</button><button id="petShopBtn" class="pb-btn">🛍️ 商城</button><button id="petCard" class="pb-btn">📇 名片</button></div>`;
     return `<b>${stageName}</b> · Lv.${lv}${streak} · 💰${S.coins || 0}
       <div class="pb-bars">${bar("飽足", S.hunger, "")}${bar("心情", S.mood, "mood")}${bar("整潔", S.clean == null ? 90 : S.clean, "clean")}${bar("經驗", rem / need * 100, "xp")}</div>
       ${nextStage ? `<div class="pb-next">${nextStage}</div>` : ""}${tend}${todayLine}${questLines}${dexLine}${btns}`;
@@ -1210,6 +1388,7 @@
       try { localStorage.setItem(EN_KEY, on ? "1" : "0"); } catch {}
       b.classList.toggle("off", !on);
       if (on) start(); else destroy();
+      document.dispatchEvent(new CustomEvent("pet:toggled", { detail: { on } })); // shrine.js follows suit
     };
     document.body.appendChild(b);
   }
