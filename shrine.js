@@ -57,6 +57,18 @@
     <path d="M90 47 C100 45 105 47 107 52 C101 55 93 53 90 51 Z" fill="url(#shGold)"/>
   </svg>`;
 
+  /* 火爐 — fire brazier used to light the incense */
+  const BRAZIER = `<svg viewBox="0 0 60 62" aria-hidden="true">
+    <defs><linearGradient id="shBronze2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#d8a24a"/><stop offset="100%" stop-color="#7a5220"/></linearGradient></defs>
+    <ellipse cx="30" cy="58" rx="16" ry="3.5" fill="rgba(0,0,0,.3)"/>
+    <line x1="22" y1="52" x2="18" y2="60" stroke="#5a3c17" stroke-width="2.4"/><line x1="38" y1="52" x2="42" y2="60" stroke="#5a3c17" stroke-width="2.4"/>
+    <path d="M18 40 L42 40 L38 54 L22 54 Z" fill="url(#shBronze2)" stroke="#5a3c17" stroke-width="1.4"/>
+    <ellipse cx="30" cy="40" rx="13" ry="3.6" fill="#3a2a12" stroke="#caa24a" stroke-width="1.2"/>
+    <path class="fl fl2" d="M24 40 C21 34 23 30 25 25 C28 30 27 36 24 40 Z" fill="#ff7a1e"/>
+    <path class="fl fl3" d="M36 40 C39 34 37 30 35 25 C32 30 33 36 36 40 Z" fill="#ff7a1e"/>
+    <path class="fl fl1" d="M30 40 C24 31 27 24 30 18 C33 24 36 31 30 40 Z" fill="#ffb02e"/>
+  </svg>`;
+
   /* ---------- state ---------- */
   let btn, overlay, panel, st = 0, bows = 0, burnT = 0;
   // st: 0 idle · 1 have-incense(unlit) · 2 lit · 3 done-bowing · 4 inserted/done
@@ -142,7 +154,7 @@
         <div class="sh-tag">今日 XP／雲朵幣 ×${(s.mult || 1.2).toFixed(2)}（明日可再上香）</div></div>`;
       actLabel = "";
     } else if (st === 0) { inst = "點香、參拜、插香——為今日求個好運。"; actLabel = "🙏 開始上香"; }
-    else if (st === 1) { inst = "點擊右邊的燭火，點燃手中的線香。"; actLabel = ""; }
+    else if (st === 1) { inst = "拿起香，把香頭湊到火爐點燃 🔥"; actLabel = ""; }
     else if (st === 2) { inst = `向文昌帝君誠心參拜（${bows}/3）`; actLabel = `參拜 (${bows}/3)`; }
     else if (st === 3) { inst = "將香插入香爐。"; actLabel = "插香入爐"; }
 
@@ -152,8 +164,8 @@
       <div class="sh-stage">
         <div class="sh-deity">${DEITY}</div>
         <div class="sh-censer"></div>
-        ${(st >= 1 && st <= 3) ? `<div class="sh-hand${st >= 2 ? " lit" : ""}">🤲<div class="sticks"><span class="st"></span><span class="st"></span><span class="st"></span></div></div>` : ""}
-        ${st === 1 ? `<div class="sh-candle hint" title="點火">🕯️</div>` : ""}
+        ${(st >= 1 && st <= 3) ? `<div class="sh-hand${st >= 2 ? " lit" : ""}${st === 1 ? " grab" : ""}">🤲<div class="sticks"><span class="st"></span><span class="st"></span><span class="st"></span></div></div>` : ""}
+        ${st === 1 ? `<div class="sh-brazier" title="火爐">${BRAZIER}</div>` : ""}
       </div>
       <div class="sh-inst">${inst}</div>
       ${actLabel ? `<button class="sh-act" id="${actId}">${actLabel}</button>` : ""}
@@ -167,10 +179,53 @@
     }
 
     panel.querySelector(".sh-close").onclick = closeShrine;
-    const candle = panel.querySelector(".sh-candle");
-    if (candle) candle.onclick = lightIncense;
+    if (st === 1) {
+      const hand = panel.querySelector(".sh-hand");
+      if (hand) { hand.addEventListener("mousedown", startHandDrag); hand.addEventListener("touchstart", startHandDrag, { passive: false }); }
+    }
     const act = panel.querySelector("#shAct");
     if (act) act.onclick = onAct;
+  }
+
+  /* light the incense: grab the hand, bring the tips to the fire brazier */
+  let handDrag = false;
+  function startHandDrag(e) {
+    if (st !== 1 || handDrag) return;
+    e.preventDefault();
+    handDrag = true;
+    window.addEventListener("mousemove", moveHand);
+    window.addEventListener("mouseup", endHandDrag);
+    window.addEventListener("touchmove", moveHand, { passive: false });
+    window.addEventListener("touchend", endHandDrag);
+  }
+  function moveHand(e) {
+    if (!handDrag || !panel) return;
+    if (e.cancelable) e.preventDefault();
+    const p = touchPt(e), hand = panel.querySelector(".sh-hand"), stage = panel.querySelector(".sh-stage");
+    if (!hand || !stage) return;
+    const r = stage.getBoundingClientRect();
+    hand.style.left = (p.x - r.left) + "px"; hand.style.top = (p.y - r.top) + "px";
+    hand.style.bottom = "auto"; hand.style.transform = "translate(-50%,-50%)";
+    const br = panel.querySelector(".sh-brazier");
+    if (br) {
+      const b = br.getBoundingClientRect(), cx = b.left + b.width / 2, cy = b.top + b.height / 2;
+      if (Math.hypot(p.x - cx, (p.y - 44) - cy) < 34) igniteFromFire();   // incense tips ~44px above the hand
+    }
+  }
+  function endHandDrag() {
+    handDrag = false;
+    window.removeEventListener("mousemove", moveHand);
+    window.removeEventListener("mouseup", endHandDrag);
+    window.removeEventListener("touchmove", moveHand);
+    window.removeEventListener("touchend", endHandDrag);
+  }
+  function igniteFromFire() {
+    if (st !== 1) return;
+    endHandDrag();
+    const hand = panel && panel.querySelector(".sh-hand");
+    if (hand) hand.classList.add("lit", "flash");
+    st = 2;
+    setTimeout(render, 300);
   }
 
   /* drag an incense stick out; releasing the button discards it */
@@ -231,10 +286,6 @@
     if (st === 0) { st = 1; render(); }
     else if (st === 2) bow();
     else if (st === 3) insert();
-  }
-  function lightIncense() {
-    if (st !== 1) return;
-    st = 2; render();
   }
   function bow() {
     const d = panel && panel.querySelector(".sh-deity");
