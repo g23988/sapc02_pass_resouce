@@ -70,32 +70,32 @@ html[data-theme="dark"] #pet.blush .cheek{fill:#e07f7f}
 
 /* stage sizes: 幼雲 → 小雲寶 → 大雲寶 → 雲王 */
 #pet.stage-1{width:48px} #pet.stage-2{width:58px} #pet.stage-3{width:74px} #pet.stage-4{width:86px}
-#pet.stage-1 .cheek{display:none}   /* 幼雲還沒長腮紅 */
+:is(#pet,.home-companion).stage-1 .cheek{display:none}   /* 幼雲還沒長腮紅 */
 
 /* 大雲寶：培育傾向雛形配件（最終形態的預告） */
 .pet-svg .tacc{display:none;opacity:.85}
-#pet.stage-3.tend-arch  .tacc-arch{display:inline}
-#pet.stage-3.tend-guard .tacc-guard{display:inline}
-#pet.stage-3.tend-gear  .tacc-gear{display:inline}
-#pet.stage-3.tend-sage  .tacc-sage{display:inline}
+:is(#pet,.home-companion).stage-3.tend-arch  .tacc-arch{display:inline}
+:is(#pet,.home-companion).stage-3.tend-guard .tacc-guard{display:inline}
+:is(#pet,.home-companion).stage-3.tend-gear  .tacc-gear{display:inline}
+:is(#pet,.home-companion).stage-3.tend-sage  .tacc-sage{display:inline}
 
 /* final forms: accessory + tint (arch/gold wear the drawn crown, others an emoji accessory) */
 .pet-svg .crown{display:none;fill:#f5b301;stroke:#d99a00;stroke-width:.8}
 .pet-svg .acc{display:none}
-#pet.form-arch .crown,#pet.form-gold .crown{display:inline}
-#pet.form-guard .acc-guard{display:inline}
-#pet.form-gear  .acc-gear{display:inline}
-#pet.form-sage  .acc-sage{display:inline}
-#pet.form-night .acc-night{display:inline}
-#pet.form-gold  .acc-gold{display:inline}
-#pet.form-gold .pet-svg .body{fill:#ffd968;stroke:#e0b23e}
-#pet.form-night{--pet-face:#eef2fb;--pet-cheek:#7d8fc0}
-#pet.form-night .pet-svg .body{fill:#3a4666;stroke:#2b3550}
+:is(#pet,.home-companion).form-arch .crown,:is(#pet,.home-companion).form-gold .crown{display:inline}
+:is(#pet,.home-companion).form-guard .acc-guard{display:inline}
+:is(#pet,.home-companion).form-gear  .acc-gear{display:inline}
+:is(#pet,.home-companion).form-sage  .acc-sage{display:inline}
+:is(#pet,.home-companion).form-night .acc-night{display:inline}
+:is(#pet,.home-companion).form-gold  .acc-gold{display:inline}
+:is(#pet,.home-companion).form-gold .pet-svg .body{fill:#ffd968;stroke:#e0b23e}
+:is(#pet,.home-companion).form-night{--pet-face:#eef2fb;--pet-cheek:#7d8fc0}
+:is(#pet,.home-companion).form-night .pet-svg .body{fill:#3a4666;stroke:#2b3550}
 
 /* egg */
-#pet .pet-egg{display:none;font-size:42px;line-height:1;animation:pet-wobble 2.8s ease-in-out infinite;transform-origin:50% 90%}
-#pet.stage-0 .pet-egg{display:block}
-#pet.stage-0 .pet-svg{display:none}
+:is(#pet,.home-companion) .pet-egg{display:none;font-size:42px;line-height:1;animation:pet-wobble 2.8s ease-in-out infinite;transform-origin:50% 90%}
+:is(#pet,.home-companion).stage-0 .pet-egg{display:block}
+:is(#pet,.home-companion).stage-0 .pet-svg{display:none}
 
 /* ---------- animations ---------- */
 @keyframes pet-blink{0%,91%,100%{transform:scaleY(1)}94%{transform:scaleY(.08)}}

@@ -1,0 +1,27 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>雲寶家園互動驗收</title><base href="../"><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="pet.css"><link rel="stylesheet" href="pet-home.css"><style>body{padding:24px;display:block}main{max-width:620px}main button{padding:8px;margin:5px}output{display:block;white-space:pre-wrap;overflow-wrap:anywhere;margin:12px 0;font:13px/1.6 monospace}</style></head><body><main><h1>家園互動驗收</h1><p>本頁只使用記憶體存檔，重新整理即還原。</p><button id="openHome">打開家園</button><button id="one">答對同一題</button><button id="wrong">答錯一題</button><button id="batch">完成一輪練習</button><button id="mock">完成模擬考</button><button id="theme">切換明暗</button><button id="fail">切換儲存失敗</button><output id="result"></output><p id="keys">背景快捷鍵：0</p></main>
+<script>
+const homeFixture = new Map([['app_pet', JSON.stringify({ver:4,stage:2,xp:50,coins:32,lastTick:Date.now(),quests:{date:new Date().toISOString().slice(0,10),announced:true,list:[]}})]]);
+// Outfit fixtures use the real wardrobe and character, with memory-only saves.
+const outfitFixture = new URLSearchParams(location.search).get('outfit');
+if (['book','guitar','umbrella','egg','night'].includes(outfitFixture)) {
+  const p = JSON.parse(homeFixture.get('app_pet'));
+  p.acc = {tophat:true,glasses:true,scarf:true,book:true,guitar:true,umbrella:true,bee:true};
+  p.worn = {head:'tophat',face:'glasses',neck:'scarf',side:['egg','night'].includes(outfitFixture)?'book':outfitFixture,aura:'bee'};
+  if (outfitFixture === 'egg') p.stage = 0;
+  if (outfitFixture === 'night') { p.stage = 4; p.form = 'night'; }
+  homeFixture.set('app_pet', JSON.stringify(p));
+  homeFixture.set('app_pet_home', JSON.stringify({ver:1,active:null,built:['house','garden','tree'],day:'',credited:[],latest:null}));
+}
+let failHomeSave = false, nextQuestion = 10, backgroundKeys = 0;
+const fixtureOutput = () => document.getElementById('result').textContent = '儲存失敗：' + failHomeSave + '\n' + (homeFixture.get('app_pet_home') || '尚未選目標');
+Object.defineProperty(window, 'localStorage', {value:{getItem:k=>homeFixture.get(k)??null,setItem:(k,v)=>{if(k==='app_pet_home'&&failHomeSave)throw Error('quota');homeFixture.set(k,v);fixtureOutput();}}});
+document.addEventListener('keydown',e=>{if(['1','Enter','ArrowRight','l'].includes(e.key))document.getElementById('keys').textContent='背景快捷鍵：'+(++backgroundKeys);});
+document.getElementById('openHome').onclick=()=>CloudletHome.open();
+document.getElementById('one').onclick=()=>document.dispatchEvent(new CustomEvent('quiz:answered',{detail:{qid:1,exam:'fixture',correct:true}}));
+document.getElementById('wrong').onclick=()=>document.dispatchEvent(new CustomEvent('quiz:answered',{detail:{qid:2,exam:'fixture',correct:false}}));
+document.getElementById('batch').onclick=()=>{for(let i=0;i<5;i++)document.dispatchEvent(new CustomEvent('quiz:answered',{detail:{qid:nextQuestion++,exam:'fixture',correct:true}}));};
+document.getElementById('mock').onclick=()=>document.dispatchEvent(new CustomEvent('quiz:examDone',{detail:{exam:'fixture',pct:100,total:20,answers:Array.from({length:20},()=>({qid:nextQuestion++,correct:true}))}}));
+document.getElementById('theme').onclick=()=>document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark';
+document.getElementById('fail').onclick=()=>{failHomeSave=!failHomeSave;fixtureOutput();};
+fixtureOutput();
+</script><script src="pet-home-model.js"></script><script src="pet-home.js"></script><script src="pet.js"></script></body></html>
