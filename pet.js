@@ -24,10 +24,15 @@
     quests: null,                     // daily quests {date, list}
     todayStats: { c: 0, w: 0, xp: 0 },
   };
-  let S;
+  let S, rollbackBackup = null;
   function load() {
     let raw = {};
-    try { raw = JSON.parse(localStorage.getItem(KEY)) || {}; } catch {}
+    try {
+      const text = localStorage.getItem(KEY);
+      raw = JSON.parse(text) || {};
+      // Preserve the companion save before the original pet resumes writing v4.
+      if (raw.ver > 4) rollbackBackup = { key: KEY + "_backup_v" + raw.ver + "_before_legacy", text };
+    } catch {}
     S = { ...DEF, ...raw };
     const v = raw.ver || 1;      // read version from the RAW save (DEF spread must not mask it)
     if (v < 2) {                 // v2: five-stage growth tree
@@ -42,7 +47,16 @@
     }
     S.ver = 4;
   }
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} };
+  const save = () => {
+    try {
+      if (rollbackBackup) {
+        if (localStorage.getItem(rollbackBackup.key) === null)
+          localStorage.setItem(rollbackBackup.key, rollbackBackup.text);
+        rollbackBackup = null;
+      }
+      localStorage.setItem(KEY, JSON.stringify(S));
+    } catch {} // A failed backup leaves the newer save untouched; retry next time.
+  };
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
   const today = () => new Date().toISOString().slice(0, 10);
 
@@ -162,6 +176,7 @@
     bubble.addEventListener("click", e => {
       if (e.target.id === "petRebirth") doRebirth();
       else if (e.target.id === "petCard") exportCard();
+      else if (e.target.id === "petHomeBtn") window.CloudletHome?.open();
       else if (e.target.id === "petShopBtn") toggleShop();
       else if (e.target.id === "petWardrobeBtn") toggleWardrobe();
       else if (e.target.id === "petGachaBtn") toggleGacha();
@@ -174,6 +189,12 @@
     refreshLook();
     renderWorn();
     pet.addEventListener("click", pat);
+    pet.setAttribute("role", "button"); pet.setAttribute("tabindex", "0");
+    pet.setAttribute("aria-label", "雲寶，摸摸與查看家園");
+    pet.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); pat(); }
+    });
+    bubble.addEventListener("keydown", e => e.stopPropagation());
     pet.addEventListener("dblclick", spin);
     pet.addEventListener("mousedown", onGrab);
     pet.addEventListener("transitionend", e => { if (e.propertyName === "transform") arrive(); });
@@ -291,6 +312,7 @@
 
   let lastActivity = Date.now();
   function think() {
+    if (document.getElementById('petHome')?.open) return;
     applyDecay(); rollDay();
     if (!pet || (mode !== "idle" && mode !== "sleeping")) return;   // walking/busy/drag/toss: let it finish
     if (ballDrag || looseBall || showerDrag || looseShower) return; // playing / bathing — don't wander off
@@ -580,7 +602,7 @@
   const pick = a => a[Math.floor(Math.random() * a.length)];
 
   /* ---------- breeding: exam → affinity bucket → final form ---------- */
-  const AFF_MAP = { "saa-c03": "arch", "sapc02": "arch", "dop-c02": "gear", "mla_c01": "sage", "scs-c03": "guard" };
+  const AFF_MAP = { "saa-c03": "arch", "sapc02": "arch", "dop-c02": "gear", "mla_c01": "sage", "aip-c01": "sage", "scs-c03": "guard" };
   const AFF_NAME = { arch: "建築", guard: "守護", gear: "機關", sage: "賢者" };
   const FORMS = {
     arch:  { name: "蒼穹雲王 👑", line: "這朵雲，撐得起整片天空 ⛅" },
@@ -1000,15 +1022,27 @@
   const RARITY = { c: { w: 60, name: "普通", coins: 8 }, r: { w: 30, name: "稀有", coins: 18 }, e: { w: 10, name: "史詩", coins: 40 } };
   const SLOT_NAME = { head: "頭部", face: "臉部", neck: "頸部", side: "手持", aura: "夥伴" };
 
+  function wornAccessories() {
+    return Object.entries(S.worn || {}).flatMap(([slot, id]) => {
+      const a = ACC_BY_ID[id];
+      return a && a.slot === slot && S.acc?.[id] ? [{ ...a }] : [];
+    });
+  }
+  // A read-only portrait for home, using the same character and wardrobe catalog.
+  function homeAppearance() {
+    if (!S) return null;
+    const stage = S.stage;
+    const form = FORMS[S.form] ? S.form : "arch";
+    const className = `stage-${stage}` + (stage === 4 ? ` form-${form}` : stage === 3 ? ` tend-${topAff()}` : "");
+    return { stage, className, html: PET_SVG, worn: wornAccessories() };
+  }
   function renderWorn() {
     if (!pet) return;
     const box = pet.querySelector(".pet-worn");
     if (!box) return;
     box.innerHTML = "";
-    for (const slot in (S.worn || {})) {
-      const a = ACC_BY_ID[S.worn[slot]];
-      if (a) box.appendChild($make("span", "worn wslot-" + a.slot, a.e));
-    }
+    for (const a of wornAccessories()) box.appendChild($make("span", "worn wslot-" + a.slot, a.e));
+    document.dispatchEvent(new CustomEvent("pet:appearanceChanged"));
   }
   function equip(id) {
     const a = ACC_BY_ID[id]; if (!a || !S.acc[id]) return;
@@ -1132,7 +1166,7 @@
     x.font = "22px serif";
     x.fillText(DEX_ORDER.map(f => dex.some(d => d.form === f) ? DEX_EMOJI[f] : "▫️").join(" "), 308, 236);
     x.font = "13px sans-serif"; x.fillStyle = dark ? "#8b98b8" : "#8a94a8";
-    x.fillText(`AWS 刷題 · 雲寶名片 · ${today()}`, 310, 290);
+    x.fillText(`雲端能力驗測 · 雲寶名片 · ${today()}`, 310, 290);
     const a = document.createElement("a");
     a.download = `cloudpet-${today()}.png`;
     a.href = c.toDataURL("image/png");
@@ -1272,7 +1306,8 @@
     const btns = `<div>${S.stage === 4 ? `<button id="petRebirth" class="pb-btn">🥚 轉生</button>` : ""}<button id="petGachaBtn" class="pb-btn">🥚 扭蛋</button><button id="petWardrobeBtn" class="pb-btn">👕 衣櫃</button><button id="petShopBtn" class="pb-btn">🛍️ 商城</button><button id="petCard" class="pb-btn">📇 名片</button></div>`;
     return `<b>${stageName}</b> · Lv.${lv}${streak} · 💰${S.coins || 0}
       <div class="pb-bars">${bar("飽足", S.hunger, "")}${bar("心情", S.mood, "mood")}${bar("整潔", S.clean == null ? 90 : S.clean, "clean")}${bar("經驗", rem / need * 100, "xp")}</div>
-      ${nextStage ? `<div class="pb-next">${nextStage}</div>` : ""}${tend}${todayLine}${questLines}${dexLine}${btns}`;
+      ${nextStage ? `<div class="pb-next">${nextStage}</div>` : ""}${tend}${todayLine}${questLines}${dexLine}
+      ${window.CloudletHome ? `<div><button id="petHomeBtn" class="pb-btn">${window.CloudletHome.label()}</button></div>` : ""}${btns}`;
   }
 
   /* ---------- dialogue pools ---------- */
@@ -1407,6 +1442,12 @@
   });
 
   /* ---------- toggle (always present, even when pet is off) ---------- */
+  document.addEventListener("pet:homeOpened", () => { if (layer) layer.style.visibility = "hidden"; });
+  document.addEventListener("pet:homeClosed", () => { if (layer) layer.style.visibility = ""; });
+  document.addEventListener("pet:homeBuilt", e => {
+    // Let the ordinary answer feedback finish; never open a modal during study.
+    setTimeout(() => { if (layer) say(`${e.detail.name}完成了！<br><button id="petHomeBtn" class="pb-btn">陪雲寶回家看看</button>`, 6000); }, 1800);
+  });
   function buildToggle() {
     const b = $make("button", enabled() ? "" : "off", "☁");
     b.id = "petToggle";
@@ -1432,6 +1473,7 @@
       setTimeout(() => say("📋 今日委託出爐！點我看看有什麼任務", 3200), 4500);
     }
   }
+  if (typeof window !== "undefined") window.CloudletPet = { appearance: homeAppearance };
   buildToggle();
   if (enabled()) start();
 })();

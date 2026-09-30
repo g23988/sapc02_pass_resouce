@@ -27,6 +27,24 @@ const saveProgress = () => LS.set("progress", progress);
 const saveFav = () => LS.set("fav", [...fav]);
 const saveSettings = () => GLS.set("settings", settings);
 
+/* Preserve attempts whose letters belong to an older question format. */
+function migrateAnswerRevisions(records, questions) {
+  let changed = false;
+  for (const [id, prior] of Object.entries(records)) {
+    const q = questions[id];
+    if (!q?.answer_revision || prior.answer_revision === q.answer_revision || !prior.choice) continue;
+    const { previous_attempts = [], ...attempt } = prior;
+    records[id] = { answer_revision: q.answer_revision,
+      previous_attempts: [...previous_attempts, attempt] };
+    changed = true;
+  }
+  return changed;
+}
+if (migrateAnswerRevisions(progress, BY_ID)) saveProgress();
+const progressOf = id => progress[id]?.choice?.length ? progress[id] : null;
+const recordAttempt = (q, choice, correct) => ({ ...progress[q.id],
+  choice: choice.slice(), correct, ...(q.answer_revision ? { answer_revision: q.answer_revision } : {}) });
+
 /* ---------- state ---------- */
 const state = {
   mode: "practice",
@@ -49,7 +67,7 @@ const isRight = (q, sel) => { const v = verdictOf(q); return setEq(sel, q.answer
 (function regrade() {
   let dirty = false;
   for (const id in progress) {
-    const q = BY_ID[id]; if (!q) continue;
+    const q = BY_ID[id]; if (!q || !progressOf(id)) continue;
     const ok = isRight(q, progress[id].choice || []);
     if (progress[id].correct !== ok) { progress[id].correct = ok; dirty = true; }
   }
@@ -61,11 +79,19 @@ function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.ad
 
 /* ---------- rendering pieces ---------- */
 function qText(q) {
+  const previous = progress[q.id]?.previous_attempts || [];
+  const history = previous.length ? `<details class="muted"><summary>${settings.lang === "en" ?
+    "Question format updated; earlier attempts preserved" : "本題題型已更新，舊版作答已保留"}</summary>${previous.map(p =>
+    `<p>${settings.lang === "en" ? "Previous choice" : "舊版選擇"}：${esc((p.choice || []).join("、"))}</p>`).join("")}</details>` : "";
+  const formatNote = q.adaptation?.authored_distractors ? `<p class="muted">${settings.lang === "en" ?
+    "Adapted ordering/matching question: the complete-choice options were authored for this practice site." :
+    "排序／配對題改編：以下完整組合選項由本站編製。"}</p>` : "";
+  const intro = history + formatNote;
   const en = `<span class="en">${esc(q.question_en)}</span>`;
   const zh = q.question_zh ? `<span class="zh">${esc(q.question_zh)}</span>` : `<span class="zh nozh">（本題無中文翻譯）</span>`;
-  if (settings.lang === "en") return en;
-  if (settings.lang === "zh") return q.question_zh ? `<span class="en">${esc(q.question_zh)}</span>` : en + zh;
-  return en + zh;
+  if (settings.lang === "en") return intro + en;
+  if (settings.lang === "zh") return intro + (q.question_zh ? `<span class="en">${esc(q.question_zh)}</span>` : en + zh);
+  return intro + en + zh;
 }
 function optInner(q, L) {
   const en = q.options_en[L] || "";
@@ -119,7 +145,7 @@ function researchHTML(q) {
   const verdict = r.verdict.slice().sort().join(", ");
   const matchMarked = setEq(r.verdict, q.answer);
   const mismatch = matchMarked ? "" :
-    `<div class="r-warn">⚠️ 題庫標準答案（${esc(q.answer.join(", "))}）與 AWS 官方文件不符。本題請以 <b>${esc(verdict)}</b> 為準。</div>`;
+    `<div class="r-warn">⚠️ 題庫標答（${esc(q.answer.join(", "))}）與文件查證判定（${esc(verdict)}）不同，請搭配下方解析與適用條件判讀。</div>`;
   const distract = (r.distractors || []).length
     ? `<div class="r-sub">各選項辨析 (Why the others are wrong)</div>` +
       r.distractors.map(d =>
@@ -134,7 +160,7 @@ function researchHTML(q) {
   return `<div class="research">
     <div class="r-title">🔎 AWS 文件查證解析
       <span class="r-conf r-${esc(r.confidence)}">${esc(CONF_ZH[r.confidence] || r.confidence)}</span></div>
-    <div class="r-verdict">經 AWS 官方文件查證的正解：<b>${esc(verdict)}</b></div>
+    <div class="r-verdict">${r.confidence === "high" ? "經 AWS 官方文件查證的正解" : "依 AWS 文件判讀的建議答案"}：<b>${esc(verdict)}</b></div>
     ${mismatch}
     <div class="r-expl">${biText(r.explanation_en, r.explanation_zh)}</div>
     ${distract}
@@ -179,8 +205,8 @@ function headHTML(q, favOn) {
 function applyFilter() {
   const s = state.search.trim().toLowerCase();
   state.filtered = Q.filter(q => {
-    if (state.scope === "unanswered" && progress[q.id]) return false;
-    if (state.scope === "wrong" && !(progress[q.id] && !progress[q.id].correct)) return false;
+    if (state.scope === "unanswered" && progressOf(q.id)) return false;
+    if (state.scope === "wrong" && !(progressOf(q.id) && !progress[q.id].correct)) return false;
     if (state.scope === "fav" && !fav.has(q.id)) return false;
     if (state.minDiff && (q.difficulty || 0) < state.minDiff) return false;
     if (state.tag && !q.tags.includes(state.tag)) return false;
@@ -214,7 +240,7 @@ function renderNav() {
   const cur = state.filtered[state.curIdx];
   $("#qNav").innerHTML = state.filtered.map((q, i) => {
     let c = "";
-    const p = progress[q.id];
+    const p = progressOf(q.id);
     if (p) c = p.correct ? "correct" : "wrong";
     if (cur && q.id === cur.id) c += " current";
     if (fav.has(q.id)) c += " fav";
@@ -235,7 +261,7 @@ function renderPracticeCard() {
   $("#nextBtn").disabled = state.curIdx === state.filtered.length - 1;
   const q = state.filtered[state.curIdx];
   // restore prior answer if exists
-  const prior = progress[q.id];
+  const prior = progressOf(q.id);
   if (!state.graded && prior) { state.selection = prior.choice.slice(); state.graded = true; }
   card.innerHTML = headHTML(q, fav.has(q.id)) +
     `<div class="q-text">${qText(q)}</div>` +
@@ -263,7 +289,7 @@ function practiceSubmit() {
   if (!state.selection.length) return;
   const q = state.filtered[state.curIdx];
   const correct = isRight(q, state.selection);
-  progress[q.id] = { choice: state.selection.slice(), correct };
+  progress[q.id] = recordAttempt(q, state.selection, correct);
   saveProgress();
   state.graded = true;
   renderPracticeCard();
@@ -273,7 +299,9 @@ function practiceSubmit() {
 function practiceRetry() {
   if (!state.filtered.length) return;
   const q = state.filtered[state.curIdx];
-  delete progress[q.id];
+  if (progress[q.id]?.previous_attempts) {
+    progress[q.id] = { answer_revision: q.answer_revision, previous_attempts: progress[q.id].previous_attempts };
+  } else delete progress[q.id];
   saveProgress();
   state.selection = [];
   state.graded = false;
@@ -304,7 +332,7 @@ function startExam() {
   const t = +$("#examTimeSeg .active").dataset.t;
   const pool = $("#examPoolSeg .active").dataset.pool;
   let src = Q;
-  if (pool === "wrong") src = Q.filter(q => progress[q.id] && !progress[q.id].correct);
+  if (pool === "wrong") src = Q.filter(q => progressOf(q.id) && !progress[q.id].correct);
   if (!src.length) { toast("錯題本是空的，先去練習吧"); return; }
   const qs = shuffle(src).slice(0, Math.min(n, src.length));
   state.exam = { qs, answers: {}, pos: 0, durationSec: t * 60, endTime: t ? Date.now() + t * 60000 : 0, timerId: null };
@@ -357,15 +385,17 @@ function submitExam() {
   const e = state.exam; if (!e) return;
   if (e.timerId) clearInterval(e.timerId);
   let correct = 0;
+  const homeAnswers = [];
   e.qs.forEach(q => {
     const sel = e.answers[q.id] || [];
     const ok = isRight(q, sel);
+    homeAnswers.push({ qid: q.id, correct: ok });
     if (ok) correct++;
-    if (sel.length) progress[q.id] = { choice: sel.slice(), correct: ok }; // feed mistake book / stats
+    if (sel.length) progress[q.id] = recordAttempt(q, sel, ok); // feed mistake book / stats
   });
   saveProgress();
   const pct = Math.round((correct / e.qs.length) * 100);
-  document.dispatchEvent(new CustomEvent("quiz:examDone", { detail: { pct, total: e.qs.length, exam: EXAM_ID } })); // pet.js hook (no-op if absent)
+  document.dispatchEvent(new CustomEvent("quiz:examDone", { detail: { pct, total: e.qs.length, exam: EXAM_ID, answers: homeAnswers } })); // companion hooks (no-op if absent)
   renderExamResult(correct, pct);
   state.exam._graded = e; // keep for review
 }
@@ -400,7 +430,7 @@ function renderReview(wrongOnly) {
 
 /* ================= STATS ================= */
 function renderStats() {
-  const ids = Object.keys(progress);
+  const ids = Object.keys(progress).filter(id => progressOf(id));
   const answered = ids.length;
   const correct = ids.filter(id => progress[id].correct).length;
   const wrong = answered - correct;
@@ -414,7 +444,7 @@ function renderStats() {
   // per-tag accuracy
   const rows = ALL_TAGS.map(tag => {
     const qs = Q.filter(q => q.tags.includes(tag));
-    const done = qs.filter(q => progress[q.id]);
+    const done = qs.filter(q => progressOf(q.id));
     const ok = done.filter(q => progress[q.id].correct).length;
     const a = done.length ? Math.round((ok / done.length) * 100) : 0;
     return { tag, a, done: done.length, total: qs.length };
@@ -471,12 +501,12 @@ function initExamPicker() {
   const sel = $("#examSel");
   if (sel) {
     sel.innerHTML = EXAMS.map(e =>
-      `<option value="${esc(e.id)}">${esc(e.short)}（${e.count} 題${e.researched ? "・查證 " + e.researched : ""}）</option>`).join("");
+      `<option value="${esc(e.id)}">${esc(e.short)} ${esc((e.name_zh || "").replace(/\s*\([^)]*\)\s*$/, ""))}（${e.count} 題${e.researched ? "・查證 " + e.researched : ""}）</option>`).join("");
     sel.value = EXAM_ID;
     sel.onchange = () => { localStorage.setItem("current_exam", sel.value); location.reload(); };
   }
   const m = EXAM_META;
-  const title = (m.short || "AWS") + " 刷題";
+  const title = "雲端能力驗測";
   const bt = $(".brand-title"); if (bt) bt.textContent = title;
   const bs = $(".brand-sub"); if (bs) bs.textContent = (m.sub_zh ? m.sub_zh + " · " : "") + Q.length + " 題";
   document.title = title + (m.name_en ? " · " + m.name_en : "");
@@ -536,7 +566,7 @@ function init() {
   if (menuBtn) menuBtn.onclick = () => { const s = $(".sidebar"); const open = !s.classList.contains("open"); s.classList.toggle("open", open); backdrop.classList.toggle("show", open); };
   backdrop.onclick = closeDrawer;
   let st;
-  $("#searchBox").addEventListener("input", e => { clearTimeout(st); st = setTimeout(() => { state.search = e.target.value; renderPractice(); }, 180); });
+  $("#searchBox").addEventListener("input", e => { clearTimeout(st); st = setTimeout(() => { state.search = e.target.value; state.curIdx = 0; state.selection = []; state.graded = false; renderPractice(); }, 180); });
 
   // exam controls
   ["examCountSeg", "examTimeSeg", "examPoolSeg"].forEach(id =>
