@@ -33,3 +33,20 @@
 html[data-companion="apprentice"] #companionSwitch{bottom:14px}
 html[data-companion="apprentice"] #petToggle,
 html[data-companion="apprentice"] #shrineBtn{display:none}
+
+/* speech bubble — sits above her head in the right margin, never takes clicks; follows the site theme */
+.ap-say{
+  position:fixed; z-index:92; box-sizing:border-box; padding:10px 13px;
+  background:var(--surface,#fff); color:var(--text,#1a2230); border:1px solid var(--border,#e1e5ec);
+  border-radius:14px; box-shadow:0 6px 18px rgba(0,0,0,.12);
+  font-size:14px; line-height:1.55; letter-spacing:.02em; overflow-wrap:anywhere;
+  pointer-events:none; opacity:0; transform:translateY(6px); transition:opacity .18s, transform .18s;
+}
+.ap-say.on{opacity:1; transform:none}
+.ap-say .ap-rest{visibility:hidden}
+.ap-say::after{
+  content:""; position:absolute; bottom:-7px; right:var(--tail,40px); width:12px; height:12px;
+  background:inherit; border-right:1px solid var(--border,#e1e5ec); border-bottom:1px solid var(--border,#e1e5ec);
+  transform:rotate(45deg);
+}
+@media (prefers-reduced-motion: reduce){ .ap-say{transition:none; transform:none} }
