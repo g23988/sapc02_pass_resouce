@@ -1,0 +1,758 @@
+{
+  "version": 2,
+  "canvas": {
+    "width": 2048,
+    "height": 2048,
+    "origin": "top-left",
+    "unit": "pixel",
+    "xDirection": "right",
+    "yDirection": "down"
+  },
+  "leftRightConvention": "viewer/screen",
+  "neckPivot": {
+    "x": 1024,
+    "y": 786
+  },
+  "mouthCenter": {
+    "x": 1021,
+    "y": 659
+  },
+  "hairRoots": {
+    "hair-back": {
+      "x": 1024,
+      "y": 208
+    },
+    "hair-front": {
+      "x": 1024,
+      "y": 208
+    },
+    "hair-side-L": {
+      "x": 733,
+      "y": 438
+    },
+    "hair-side-R": {
+      "x": 1315,
+      "y": 438
+    }
+  },
+  "drawOrder": [
+    "hair-back.png",
+    "body.png",
+    "ear-L.png",
+    "ear-R.png",
+    "face-skin.png",
+    "eye-white-L.png",
+    "eye-white-R.png",
+    "iris-L.png",
+    "iris-R.png",
+    "eyelid-upper-L.png",
+    "eyelid-upper-R.png",
+    "eyelid-lower-L.png",
+    "eyelid-lower-R.png",
+    "brow-L.png",
+    "brow-R.png",
+    "nose.png",
+    "mouth-closed.png",
+    "hair-side-L.png",
+    "hair-side-R.png",
+    "hair-front.png"
+  ],
+  "compositeBackground": "#ffffff",
+  "alphaMode": "straight/unassociated",
+  "rendering": "source-over; alpha clips multiply alpha only and preserve straight RGB; order is explicit, depth is for parallax only",
+  "bleed": {
+    "hair-side-L": {
+      "rootExtensionPx": 112,
+      "maximumGeodesicDistance": 112,
+      "addedPixels": 18773,
+      "occluder": "hair-front.png"
+    },
+    "hair-side-R": {
+      "rootExtensionPx": 112,
+      "maximumGeodesicDistance": 112,
+      "addedPixels": 16769,
+      "occluder": "hair-front.png"
+    }
+  },
+  "eyes": {
+    "L": {
+      "center": {
+        "x": 912,
+        "y": 503
+      },
+      "irisMovementEllipse": {
+        "center": {
+          "x": 912,
+          "y": 503
+        },
+        "radiusX": 12,
+        "radiusY": 7
+      },
+      "apertureMask": "masks/eye-aperture-L.png",
+      "upperLidCloseDirection": {
+        "x": 0,
+        "y": 1
+      },
+      "lowerLidCloseDirection": {
+        "x": 0,
+        "y": -1
+      }
+    },
+    "R": {
+      "center": {
+        "x": 1134,
+        "y": 503
+      },
+      "irisMovementEllipse": {
+        "center": {
+          "x": 1134,
+          "y": 503
+        },
+        "radiusX": 12,
+        "radiusY": 7
+      },
+      "apertureMask": "masks/eye-aperture-R.png",
+      "upperLidCloseDirection": {
+        "x": 0,
+        "y": 1
+      },
+      "lowerLidCloseDirection": {
+        "x": 0,
+        "y": -1
+      }
+    }
+  },
+  "layers": [
+    {
+      "file": "hair-back.png",
+      "boundingBox": {
+        "x": 493,
+        "y": 67,
+        "width": 1044,
+        "height": 881
+      },
+      "depth": -0.3,
+      "parent": "head",
+      "pivot": {
+        "x": 1024,
+        "y": 208
+      },
+      "defaultVisible": true
+    },
+    {
+      "file": "body.png",
+      "boundingBox": {
+        "x": 176,
+        "y": 662,
+        "width": 1687,
+        "height": 1386
+      },
+      "depth": 0,
+      "parent": null,
+      "pivot": {
+        "x": 1024,
+        "y": 786
+      },
+      "defaultVisible": true
+    },
+    {
+      "file": "face-skin.png",
+      "boundingBox": {
+        "x": 738,
+        "y": 127,
+        "width": 568,
+        "height": 652
+      },
+      "depth": 0.5,
+      "parent": "head",
+      "pivot": {
+        "x": 1024,
+        "y": 786
+      },
+      "defaultVisible": true,
+      "clipMask": "masks/face-core.png"
+    },
+    {
+      "file": "hair-side-L.png",
+      "boundingBox": {
+        "x": 492,
+        "y": 327,
+        "width": 422,
+        "height": 636
+      },
+      "depth": 0.9,
+      "parent": "head",
+      "pivot": {
+        "x": 733,
+        "y": 438
+      },
+      "defaultVisible": true
+    },
+    {
+      "file": "hair-side-R.png",
+      "boundingBox": {
+        "x": 1132,
+        "y": 322,
+        "width": 407,
+        "height": 641
+      },
+      "depth": 0.9,
+      "parent": "head",
+      "pivot": {
+        "x": 1315,
+        "y": 438
+      },
+      "defaultVisible": true
+    },
+    {
+      "file": "hair-front.png",
+      "boundingBox": {
+        "x": 640,
+        "y": 50,
+        "width": 762,
+        "height": 415
+      },
+      "depth": 1,
+      "parent": "head",
+      "pivot": {
+        "x": 1024,
+        "y": 208
+      },
+      "defaultVisible": true
+    },
+    {
+      "file": "brow-L.png",
+      "boundingBox": {
+        "x": 840,
+        "y": 389,
+        "width": 139,
+        "height": 42
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 912,
+        "y": 503
+      },
+      "defaultVisible": true
+    },
+    {
+      "file": "brow-R.png",
+      "boundingBox": {
+        "x": 1065,
+        "y": 389,
+        "width": 139,
+        "height": 42
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 1134,
+        "y": 503
+      },
+      "defaultVisible": true
+    },
+    {
+      "file": "nose.png",
+      "boundingBox": {
+        "x": 999,
+        "y": 554,
+        "width": 40,
+        "height": 60
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 1024,
+        "y": 786
+      },
+      "defaultVisible": true
+    },
+    {
+      "file": "mouth-closed.png",
+      "boundingBox": {
+        "x": 961,
+        "y": 631,
+        "width": 121,
+        "height": 57
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 1021,
+        "y": 659
+      },
+      "defaultVisible": true
+    },
+    {
+      "file": "eye-white-L.png",
+      "boundingBox": {
+        "x": 847,
+        "y": 469,
+        "width": 106,
+        "height": 68
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 912,
+        "y": 503
+      },
+      "defaultVisible": true
+    },
+    {
+      "file": "eye-white-R.png",
+      "boundingBox": {
+        "x": 1092,
+        "y": 467,
+        "width": 106,
+        "height": 69
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 1134,
+        "y": 503
+      },
+      "defaultVisible": true
+    },
+    {
+      "file": "iris-L.png",
+      "boundingBox": {
+        "x": 875,
+        "y": 466,
+        "width": 72,
+        "height": 75
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 912,
+        "y": 503
+      },
+      "defaultVisible": true,
+      "clipMask": "masks/eye-aperture-L.png"
+    },
+    {
+      "file": "iris-R.png",
+      "boundingBox": {
+        "x": 1099,
+        "y": 466,
+        "width": 74,
+        "height": 75
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 1134,
+        "y": 503
+      },
+      "defaultVisible": true,
+      "clipMask": "masks/eye-aperture-R.png"
+    },
+    {
+      "file": "eyelid-upper-L.png",
+      "boundingBox": {
+        "x": 809,
+        "y": 426,
+        "width": 173,
+        "height": 108
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 912,
+        "y": 503
+      },
+      "defaultVisible": true
+    },
+    {
+      "file": "eyelid-upper-R.png",
+      "boundingBox": {
+        "x": 1065,
+        "y": 426,
+        "width": 168,
+        "height": 108
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 1134,
+        "y": 503
+      },
+      "defaultVisible": true
+    },
+    {
+      "file": "eyelid-lower-L.png",
+      "boundingBox": {
+        "x": 813,
+        "y": 534,
+        "width": 157,
+        "height": 37
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 912,
+        "y": 503
+      },
+      "defaultVisible": true
+    },
+    {
+      "file": "eyelid-lower-R.png",
+      "boundingBox": {
+        "x": 1078,
+        "y": 534,
+        "width": 148,
+        "height": 38
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 1134,
+        "y": 503
+      },
+      "defaultVisible": true
+    },
+    {
+      "file": "ear-L.png",
+      "boundingBox": {
+        "x": 738,
+        "y": 474,
+        "width": 97,
+        "height": 165
+      },
+      "depth": 0.2,
+      "parent": "head",
+      "pivot": {
+        "x": 1024,
+        "y": 786
+      },
+      "defaultVisible": true
+    },
+    {
+      "file": "ear-R.png",
+      "boundingBox": {
+        "x": 1206,
+        "y": 474,
+        "width": 100,
+        "height": 165
+      },
+      "depth": 0.2,
+      "parent": "head",
+      "pivot": {
+        "x": 1024,
+        "y": 786
+      },
+      "defaultVisible": true
+    },
+    {
+      "file": "head-base.png",
+      "boundingBox": {
+        "x": 738,
+        "y": 127,
+        "width": 568,
+        "height": 652
+      },
+      "depth": 0.5,
+      "parent": "head",
+      "pivot": {
+        "x": 1024,
+        "y": 786
+      },
+      "defaultVisible": false
+    },
+    {
+      "file": "mouth-smile.png",
+      "boundingBox": {
+        "x": 946,
+        "y": 594,
+        "width": 151,
+        "height": 131
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 1021,
+        "y": 659
+      },
+      "defaultVisible": false
+    },
+    {
+      "file": "mouth-a.png",
+      "boundingBox": {
+        "x": 946,
+        "y": 594,
+        "width": 151,
+        "height": 131
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 1021,
+        "y": 659
+      },
+      "defaultVisible": false
+    },
+    {
+      "file": "mouth-i.png",
+      "boundingBox": {
+        "x": 946,
+        "y": 594,
+        "width": 151,
+        "height": 131
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 1021,
+        "y": 659
+      },
+      "defaultVisible": false
+    },
+    {
+      "file": "mouth-u.png",
+      "boundingBox": {
+        "x": 946,
+        "y": 594,
+        "width": 151,
+        "height": 131
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 1021,
+        "y": 659
+      },
+      "defaultVisible": false
+    },
+    {
+      "file": "mouth-e.png",
+      "boundingBox": {
+        "x": 947,
+        "y": 594,
+        "width": 150,
+        "height": 131
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 1021,
+        "y": 659
+      },
+      "defaultVisible": false
+    },
+    {
+      "file": "mouth-o.png",
+      "boundingBox": {
+        "x": 946,
+        "y": 594,
+        "width": 151,
+        "height": 131
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 1021,
+        "y": 659
+      },
+      "defaultVisible": false
+    },
+    {
+      "file": "mouth-open-smile.png",
+      "boundingBox": {
+        "x": 946,
+        "y": 594,
+        "width": 151,
+        "height": 131
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 1021,
+        "y": 659
+      },
+      "defaultVisible": false
+    },
+    {
+      "file": "mouth-frown.png",
+      "boundingBox": {
+        "x": 946,
+        "y": 594,
+        "width": 151,
+        "height": 131
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 1021,
+        "y": 659
+      },
+      "defaultVisible": false
+    },
+    {
+      "file": "eyelid-closed-L.png",
+      "boundingBox": {
+        "x": 801,
+        "y": 424,
+        "width": 184,
+        "height": 149
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 912,
+        "y": 503
+      },
+      "defaultVisible": false
+    },
+    {
+      "file": "eyelid-closed-R.png",
+      "boundingBox": {
+        "x": 1063,
+        "y": 424,
+        "width": 184,
+        "height": 149
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 1134,
+        "y": 503
+      },
+      "defaultVisible": false
+    },
+    {
+      "file": "eye-sparkle-L.png",
+      "boundingBox": {
+        "x": 801,
+        "y": 424,
+        "width": 184,
+        "height": 149
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 912,
+        "y": 503
+      },
+      "defaultVisible": false
+    },
+    {
+      "file": "eye-sparkle-R.png",
+      "boundingBox": {
+        "x": 1063,
+        "y": 424,
+        "width": 184,
+        "height": 149
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 1134,
+        "y": 503
+      },
+      "defaultVisible": false
+    },
+    {
+      "file": "eye-smile-L.png",
+      "boundingBox": {
+        "x": 801,
+        "y": 424,
+        "width": 184,
+        "height": 149
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 912,
+        "y": 503
+      },
+      "defaultVisible": false
+    },
+    {
+      "file": "eye-smile-R.png",
+      "boundingBox": {
+        "x": 1063,
+        "y": 424,
+        "width": 184,
+        "height": 149
+      },
+      "depth": 0.8,
+      "parent": "head",
+      "pivot": {
+        "x": 1134,
+        "y": 503
+      },
+      "defaultVisible": false
+    }
+  ],
+  "expressionSwitches": {
+    "mouth": {
+      "exclusive": [
+        "mouth-closed.png",
+        "mouth-smile.png",
+        "mouth-a.png",
+        "mouth-i.png",
+        "mouth-u.png",
+        "mouth-e.png",
+        "mouth-o.png",
+        "mouth-open-smile.png",
+        "mouth-frown.png"
+      ],
+      "default": "mouth-closed.png"
+    },
+    "eyes": {
+      "neutral": [
+        "eye-white",
+        "iris",
+        "eyelid-upper",
+        "eyelid-lower"
+      ],
+      "closed": [
+        "eyelid-closed"
+      ],
+      "sparkle": [
+        "eye-sparkle"
+      ],
+      "smile": [
+        "eye-smile"
+      ],
+      "note": "For each side replace the entire neutral eye group; keep brows separate."
+    }
+  },
+  "aliases": {
+    "head-base.png": "face-skin.png"
+  },
+  "deferred": [
+    "front hair subdivision",
+    "upper/lower side segments",
+    "separate goggles",
+    "separate cloud clip"
+  ],
+  "nodes": {
+    "head": {
+      "type": "virtual-transform-group",
+      "pivot": {
+        "x": 1024,
+        "y": 786
+      },
+      "parent": null
+    }
+  },
+  "previewedMotion": {
+    "headDegrees": [
+      -3,
+      3
+    ],
+    "sideHairDegrees": [
+      -4,
+      4
+    ],
+    "irisX": [
+      -12,
+      12
+    ],
+    "status": "Raster preview only; not target engine validation"
+  }
+}

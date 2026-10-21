@@ -2,6 +2,7 @@
    listens only to CustomEvents, never calls app.js functions or touches its state.
      quiz:answered  detail {qid, correct}   → feed on correct (once per qid per day)
      quiz:examDone  detail {pct, total}     → big meal
+     companion:changed (apprentice.js)      → stand down while <html data-companion="apprentice">
    Storage: localStorage "app_pet" (state) + "app_pet_enabled" (toggle).
    Uninstall = delete pet.js/pet.css + the two dispatchEvent lines in app.js. */
 "use strict";
@@ -1462,8 +1463,16 @@
     document.body.appendChild(b);
   }
 
+  /* ---------- companion slot: apprentice.js may claim it (desktop opt-in) ---------- */
+  const yielded = () => document.documentElement.dataset.companion === "apprentice";
+  document.addEventListener("companion:changed", () => {
+    if (yielded()) { if (layer) destroy(); }
+    else if (enabled() && !layer) start();
+  });
+
   /* ---------- boot ---------- */
   function start() {
+    if (yielded()) return;
     load(); applyDecay(); rollDay(); save();
     build();
     if (S.dusty) say("好久不見……雲寶有點想你 🥺 刷幾題幫牠打起精神吧", 4000);
