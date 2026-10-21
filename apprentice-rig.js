@@ -8,6 +8,10 @@
    - Exclusive switches: one mouth at the mouth-closed slot; per side, the neutral eye group
      (white, iris, upper/lower lid) is replaced as a whole by closed / sparkle / smile. Brows stay.
    - head-base.png is an alias of face-skin and is never drawn.
+   - Outfits: the body slot is exclusive like the mouth. "default" = body.png; any other id loads
+     body-<id> from the same folder on first use (rig.json "outfits": [ids] only lists them).
+     A whole-body swap: each outfit must keep the neck (y ≤ 800) pixel-identical to body.png and
+     the silhouette up to the shoulders (y ≤ 965) unchanged — face, hair-back and side locks overlap there.
    Motion: body breathes (strip lift, see BREATH); the "head" group rotates about neckPivot; side locks and front
    hair add their own root rotation; head layers shift by (depth − 0.5) × look for parallax.
    Used by apprentice.js (companion) and tests/apprentice-harness.html (dev preview). */
@@ -60,6 +64,9 @@
       br: { on: true, phase: 0, period: 4.2, rate: 1, rateT: 1, depth: 1, depthT: 1, sigh: 0 }, breathV: 0,
     };
     let rig, info, img = {}, faceSkin = null, eyeBuf = {}, raf = 0, last = 0, t = 0, alive = true, blinkT = 0;
+    let outfit = { id: "default", im: null }, outfitTok = 0;
+    const wardrobe = {};                        // id → Promise<Image|null>, loaded on first use
+    const OUTFIT_BB = { y: 0 };                 // unknown extent: breathe strips from the top
 
     function load(f, tries = 3) {
       return new Promise(res => {
@@ -197,12 +204,13 @@
           if (st.hidden[name]) continue;
         }
         if (n === "mouth-closed") name = "mouth-" + st.mouth;              // exclusive mouth slot
-        const im = name === "face-skin" && faceSkin ? faceSkin : img[name];
+        const worn = n === "body" && outfit.im;                             // exclusive outfit slot
+        const im = worn ? outfit.im : name === "face-skin" && faceSkin ? faceSkin : img[name];
         const li = info[name] || info[n];
         if (!im || !li) continue;
         if (li.parent !== "head") {
           world();
-          drawBody(im, amp, li.boundingBox, snap);
+          drawBody(im, amp, worn ? OUTFIT_BB : li.boundingBox, snap);
           continue;
         }
         headSpace(li.depth || 0);
@@ -277,6 +285,19 @@
       hop(v = -480) { st.hop.v += v; },
       nod(px = 12) { st.nod.target = px; },
       tilt(deg = 0) { st.tilt.target = deg; },
+      // whole-body outfit swap; resolves true once shown, false (keeping the current one) if it fails to load
+      setOutfit(id = "default") {
+        const tok = ++outfitTok;
+        if (id === "default") { outfit = { id, im: null }; draw(); return Promise.resolve(true); }
+        if (!/^[a-z0-9-]+$/.test(id)) return Promise.resolve(false);
+        if (!wardrobe[id]) wardrobe[id] = ready.then(() => load("body-" + id + ".png"));
+        return wardrobe[id].then(im => {
+          if (!im) { delete wardrobe[id]; return false; }    // a later call may retry
+          if (tok !== outfitTok || !alive) return false;     // superseded by a newer call
+          outfit = { id, im }; draw(); return true;
+        }, () => false);
+      },
+      outfits: () => ["default"].concat(rig && Array.isArray(rig.outfits) ? rig.outfits : []),
       setFraming(m) { st.framing = m; resize(); },
       pause(p) { st.paused = !!p; redraw(); },
       // dev overrides (null = automatic)
@@ -295,7 +316,7 @@
       },
       resize, draw,
       layers: () => (rig ? rig.drawOrder.map(base) : []),
-      state: () => ({ eyes: st.blinking && st.eyes === "neutral" ? "closed" : st.eyes, mouth: st.mouth,
+      state: () => ({ eyes: st.blinking && st.eyes === "neutral" ? "closed" : st.eyes, mouth: st.mouth, outfit: outfit.id,
         headDeg: st.headDeg || 0, hairL: st.hairL.x, hairR: st.hairR.x, breath: st.breathV, gaze: [st.gx.x, st.gy.x], look: [st.lx.x, st.ly.x], brows: { ...st.brows } }),
       destroy() { alive = false; if (raf) cancelAnimationFrame(raf); raf = 0; },
     };
