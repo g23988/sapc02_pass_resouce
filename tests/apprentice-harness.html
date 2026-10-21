@@ -33,6 +33,9 @@
     <h2>遊戲狀態（apprentice.js 的映射）</h2><div class="row" id="presets"></div>
     <h2>眼睛</h2><div class="row" id="eyes"></div>
     <h2>嘴型（九選一）</h2><div class="row" id="mouths"></div>
+    <h2>服裝（整套 body 互斥切換）</h2>
+    <div class="row" id="outfits"></div>
+    <div class="row"><input id="outfitId" placeholder="body-<id> 的 id" size="16"><button id="outfitTry">載入</button><span id="outfitMsg"></span></div>
     <h2>動畫</h2>
     <div class="row">
       <button id="pause">暫停並回到中性原點</button>
@@ -90,8 +93,15 @@ rig.EYES.forEach(e => mk(e, b => { rig.setEyes(e); radio("#eyes button", b); }, 
 rig.MOUTHS.forEach(m => mk(m, b => { rig.setMouth(m); radio("#mouths button", b); }, $("mouths")));
 rig.ready.then(() => {
   radio("#eyes button", $("eyes").firstChild); radio("#mouths button", $("mouths").firstChild);
+  rig.outfits().forEach(id => mk(id, b => wear(id, b), $("outfits")));
+  radio("#outfits button", $("outfits").firstChild);
   rig.layers().forEach(n => { const b = mk(n, () => { b.classList.toggle("on"); rig.setLayerVisible(n, b.classList.contains("on")); }, $("layers")); b.classList.add("on"); });
 });
+const wear = (id, b) => rig.setOutfit(id).then(ok => {
+  $("outfitMsg").textContent = ok ? "" : `「${id}」載入失敗，維持 ${rig.state().outfit}`;
+  if (ok) radio("#outfits button", b || [...$("outfits").children].find(x => x.textContent === id));
+});
+$("outfitTry").onclick = () => wear($("outfitId").value.trim());
 let paused = false;
 $("pause").onclick = e => {
   paused = !paused; rig.pause(paused);
@@ -123,7 +133,7 @@ document.querySelectorAll("[data-bg]").forEach(b => b.onclick = () => { stage.cl
 document.querySelectorAll("[data-fr]").forEach(b => b.onclick = () => { stage.classList.toggle("full", b.dataset.fr === "full"); rig.setFraming(b.dataset.fr); radio("[data-fr]", b); });
 addEventListener("resize", () => rig.resize());
 setInterval(() => { const s = rig.state(); $("st").textContent =
-  `eyes ${s.eyes}  mouth ${s.mouth}  brows dy ${s.brows.dy} rot ${s.brows.rot}\nhead ${s.headDeg.toFixed(2)}°  hair L ${s.hairL.toFixed(2)}° R ${s.hairR.toFixed(2)}°  gaze ${s.gaze.map(v => v.toFixed(2)).join(", ")}  breath ${s.breath.toFixed(2)}`; }, 200);
+  `outfit ${s.outfit}  eyes ${s.eyes}  mouth ${s.mouth}  brows dy ${s.brows.dy} rot ${s.brows.rot}\nhead ${s.headDeg.toFixed(2)}°  hair L ${s.hairL.toFixed(2)}° R ${s.hairR.toFixed(2)}°  gaze ${s.gaze.map(v => v.toFixed(2)).join(", ")}  breath ${s.breath.toFixed(2)}`; }, 200);
 </script>
 </body>
 </html>

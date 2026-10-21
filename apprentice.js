@@ -182,6 +182,7 @@
   window.CloudApprentice = {
     express: (name, ms = 2500) => express(name, ms),
     mouth: shape => rig && MOUTHS.includes(shape) && rig.setMouth(shape),   // manual only (no lip sync)
+    outfit: id => (rig ? rig.setOutfit(id) : Promise.resolve(false)),        // not persisted yet (no outfits shipped)
     states: STATE, mouths: MOUTHS,
     state: () => ({ state: shown, held, ready, rig: rig ? rig.state() : null }),
   };
