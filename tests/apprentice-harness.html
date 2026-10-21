@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>學徒圖層預覽</title>
+<style>
+  :root{ --bg:#f4f6f9; --surface:#fff; --border:#e1e5ec; --text:#1a2230; --muted:#6b7689; --accent:#ff9900; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--text); font:14px/1.5 system-ui,-apple-system,"PingFang TC",sans-serif; }
+  main{ max-width:1180px; margin:0 auto; padding:20px 16px 40px; display:grid; grid-template-columns:minmax(0,1fr) 400px; gap:20px; }
+  @media (max-width:820px){ main{ grid-template-columns:1fr; } }
+  .stage{ border:1px solid var(--border); border-radius:14px; overflow:hidden; aspect-ratio:3/4; width:100%; max-width:600px; }
+  .stage.full{ aspect-ratio:1; }
+  .stage.bg-white{ background:#fff; } .stage.bg-dark{ background:#161e2e; }
+  .stage.bg-checker{ background:repeating-conic-gradient(#d9dde4 0 25%, #fff 0 50%) 0 0/24px 24px; }
+  canvas{ display:block; width:100%; height:100%; }
+  h1{ font-size:18px; margin:0 0 6px; } h2{ font-size:13px; color:var(--muted); margin:14px 0 6px; font-weight:700; }
+  .row{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  button{ border:1px solid var(--border); background:var(--surface); color:var(--text); font:600 13px system-ui; padding:5px 9px; border-radius:8px; cursor:pointer; }
+  button:hover{ border-color:var(--accent); } button.on{ border-color:var(--accent); background:#fff4e0; }
+  .layers button{ font-weight:500; font-size:12px; padding:3px 7px; } .layers button:not(.on){ opacity:.45; }
+  label{ display:grid; grid-template-columns:76px 1fr 44px; gap:8px; align-items:center; font-size:13px; }
+  input[type=range]{ width:100%; }
+  #st{ font:12px ui-monospace,Menlo,monospace; color:var(--muted); margin-top:12px; white-space:pre; }
+</style>
+</head>
+<body>
+<main>
+  <div><div class="stage bg-white" id="stage"><canvas id="cv"></canvas></div></div>
+  <section>
+    <h1>雲端學徒・圖層預覽（開發用）</h1>
+    <h2>遊戲狀態（apprentice.js 的映射）</h2><div class="row" id="presets"></div>
+    <h2>眼睛</h2><div class="row" id="eyes"></div>
+    <h2>嘴型（九選一）</h2><div class="row" id="mouths"></div>
+    <h2>動畫</h2>
+    <div class="row">
+      <button id="pause">暫停並回到中性原點</button>
+      <button data-r="hop">小跳</button><button data-r="nod">低頭</button><button data-r="blink">眨眼</button>
+      <button data-r="sigh">嘆氣</button><button id="breathOn" class="on">呼吸：開</button>
+    </div>
+    <h2>呼吸節奏</h2>
+    <label>深度<input type="range" id="bDepth" min="0" max="2" step="0.1" value="1"><span id="bDepthv">1.0</span></label>
+    <label>速度<input type="range" id="bRate" min="0.5" max="2" step="0.1" value="1"><span id="bRatev">1.0</span></label>
+    <h2>手動控制（勾選後覆寫自動動作）</h2>
+    <label>頭部角度<input type="range" id="head" min="-3" max="3" step="0.1" value="0"><span id="headv">自動</span></label>
+    <label>左側髮<input type="range" id="hairL" min="-4" max="4" step="0.1" value="0"><span id="hairLv">自動</span></label>
+    <label>右側髮<input type="range" id="hairR" min="-4" max="4" step="0.1" value="0"><span id="hairRv">自動</span></label>
+    <label>視線 X<input type="range" id="gx" min="-1" max="1" step="0.05" value="0"><span id="gxv">自動</span></label>
+    <label>視線 Y<input type="range" id="gy" min="-1" max="1" step="0.05" value="0"><span id="gyv">自動</span></label>
+    <label>吸氣量<input type="range" id="br" min="0" max="2.2" step="0.05" value="0"><span id="brv">自動</span></label>
+    <div class="row"><button id="auto">全部回到自動</button></div>
+    <h2>圖層（drawOrder）</h2><div class="row layers" id="layers"></div>
+    <h2>背景／取景</h2>
+    <div class="row">
+      <button data-bg="white" class="on">白色</button><button data-bg="dark">深色</button><button data-bg="checker">棋盤</button>
+      <button data-fr="card" class="on">卡片</button><button data-fr="full">整張 2048</button>
+    </div>
+    <div id="st"></div>
+  </section>
+</main>
+<script src="../apprentice-rig.js"></script>
+<script>
+"use strict";
+// ?root=<folder>&ext=.png loads another copy of the rig (e.g. the 2048 originals) for verification
+// (same-origin only, so a crafted link cannot make this page show someone else's images)
+const q = new URLSearchParams(location.search);
+const sameOrigin = r => { try { return new URL(r, location.href).origin === location.origin; } catch { return false; } };
+const root = q.get("root") && sameOrigin(q.get("root")) ? q.get("root") : undefined;
+const ext = root && [".png", ".webp"].includes(q.get("ext")) ? q.get("ext") : undefined;
+const cv = document.getElementById("cv"), stage = document.getElementById("stage");
+const rig = ApprenticeRig.create(cv, { framing: "card", root, ext });
+window.rig = rig;
+const $ = id => document.getElementById(id);
+const mk = (txt, fn, parent) => { const b = document.createElement("button"); b.textContent = txt; b.onclick = () => fn(b); parent.appendChild(b); return b; };
+const radio = (sel, b) => { document.querySelectorAll(sel).forEach(x => x.classList.remove("on")); b && b.classList.add("on"); };
+const PRESETS = {   // mirrors apprentice.js STATE: [eyes, mouth, brow dy, brow rot, gaze]
+  "中性": ["neutral", "closed", 0, 0, null], "答對開心": ["sparkle", "open-smile", -4, 0, null],
+  "思考": ["neutral", "u", -6, 0, [-0.6, -0.9]], "失落但不放棄": ["neutral", "smile", 4, 8, [0, 0.5]],
+  "驚訝": ["neutral", "o", -10, 0, [0, 0]], "得意大笑": ["smile", "open-smile", -4, 0, null],
+};
+const sync = () => {
+  const s = rig.state(), find = (sel, txt) => [...document.querySelectorAll(sel)].find(b => b.textContent === txt);
+  radio("#eyes button", find("#eyes button", s.eyes)); radio("#mouths button", find("#mouths button", s.mouth));
+};
+Object.entries(PRESETS).forEach(([name, [e, m, dy, rot, g]]) => mk(name, b => {
+  rig.setEyes(e); rig.setMouth(m); rig.setBrows(dy, rot); rig.setGaze(...(g || [0, 0])); radio("#presets button", b); sync();
+}, $("presets")));
+rig.EYES.forEach(e => mk(e, b => { rig.setEyes(e); radio("#eyes button", b); }, $("eyes")));
+rig.MOUTHS.forEach(m => mk(m, b => { rig.setMouth(m); radio("#mouths button", b); }, $("mouths")));
+rig.ready.then(() => {
+  radio("#eyes button", $("eyes").firstChild); radio("#mouths button", $("mouths").firstChild);
+  rig.layers().forEach(n => { const b = mk(n, () => { b.classList.toggle("on"); rig.setLayerVisible(n, b.classList.contains("on")); }, $("layers")); b.classList.add("on"); });
+});
+let paused = false;
+$("pause").onclick = e => {
+  paused = !paused; rig.pause(paused);
+  if (paused) { rig.reset(); rig.pause(true); Object.keys(manual).forEach(id => { manual[id] = null; $(id).value = 0; $(id + "v").textContent = "自動"; }); sync(); radio("#presets button"); }
+  e.target.textContent = paused ? "繼續動畫" : "暫停並回到中性原點";
+};
+document.querySelectorAll("[data-r]").forEach(b => b.onclick = () => {
+  if (b.dataset.r === "hop") rig.hop();
+  if (b.dataset.r === "nod") { rig.nod(12); setTimeout(() => rig.nod(0), 1500); }
+  if (b.dataset.r === "blink") rig.blink();
+  if (b.dataset.r === "sigh") rig.sigh();
+});
+let breathOn = true;
+$("breathOn").onclick = e => { breathOn = !breathOn; rig.setBreath({ on: breathOn }); e.target.classList.toggle("on", breathOn); e.target.textContent = breathOn ? "呼吸：開" : "呼吸：關"; };
+["bDepth", "bRate"].forEach(id => $(id).oninput = () => {
+  $(id + "v").textContent = (+$(id).value).toFixed(1);
+  rig.setBreath(id === "bDepth" ? { depth: +$(id).value } : { rate: +$(id).value });
+});
+const manual = { head: null, hairL: null, hairR: null, gx: null, gy: null, br: null };
+const apply = () => {
+  rig.setBreathManual(manual.br);
+  rig.setHeadAngle(manual.head);
+  rig.setHairAngles(manual.hairL == null && manual.hairR == null ? null : manual.hairL ?? 0, manual.hairR ?? 0);
+  rig.setGazeManual(manual.gx == null && manual.gy == null ? null : manual.gx ?? 0, manual.gy ?? 0);
+};
+Object.keys(manual).forEach(id => $(id).oninput = () => { manual[id] = +$(id).value; $(id + "v").textContent = (+$(id).value).toFixed(id.startsWith("g") || id === "br" ? 2 : 1); apply(); });
+$("auto").onclick = () => { Object.keys(manual).forEach(id => { manual[id] = null; $(id).value = 0; $(id + "v").textContent = "自動"; }); apply(); };
+document.querySelectorAll("[data-bg]").forEach(b => b.onclick = () => { stage.className = stage.className.replace(/bg-\w+/, "bg-" + b.dataset.bg); radio("[data-bg]", b); });
+document.querySelectorAll("[data-fr]").forEach(b => b.onclick = () => { stage.classList.toggle("full", b.dataset.fr === "full"); rig.setFraming(b.dataset.fr); radio("[data-fr]", b); });
+addEventListener("resize", () => rig.resize());
+setInterval(() => { const s = rig.state(); $("st").textContent =
+  `eyes ${s.eyes}  mouth ${s.mouth}  brows dy ${s.brows.dy} rot ${s.brows.rot}\nhead ${s.headDeg.toFixed(2)}°  hair L ${s.hairL.toFixed(2)}° R ${s.hairR.toFixed(2)}°  gaze ${s.gaze.map(v => v.toFixed(2)).join(", ")}  breath ${s.breath.toFixed(2)}`; }, 200);
+</script>
+</body>
+</html>
