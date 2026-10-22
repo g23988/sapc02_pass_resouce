@@ -49,7 +49,8 @@
 
   function create(canvas, opts = {}) {
     const root = opts.root ? new URL(opts.root, location.href).href : DEFAULT_ROOT;
-    const ext = opts.ext || ".webp", ver = opts.root ? "" : "?v=rig2";
+    const ext = opts.ext || ".webp", ver = opts.root ? "" : "?v=rig3";
+    const parallax = opts.parallax != null ? +opts.parallax : PARALLAX;   // harness override for asset QA
     const url = f => root + base(f) + ext + ver;
     const ctx = canvas.getContext("2d");
     const reduced = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
@@ -190,7 +191,7 @@
       const headSpace = depth => {
         world(); ctx.translate(0, neckDy + nod);
         around(pv, st.headDeg || 0);
-        ctx.translate(lookX * 6 + (depth - 0.5) * PARALLAX * lookX, lookY * 4 + (depth - 0.5) * PARALLAX * lookY);
+        ctx.translate(lookX * 6 + (depth - 0.5) * parallax * lookX, lookY * 4 + (depth - 0.5) * parallax * lookY);
       };
       const eyeState = st.blinking && st.eyes === "neutral" ? "closed" : st.eyes;
 

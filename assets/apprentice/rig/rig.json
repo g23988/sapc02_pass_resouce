@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": "3.2",
   "canvas": {
     "width": 2048,
     "height": 2048,
@@ -38,9 +38,9 @@
   "drawOrder": [
     "hair-back.png",
     "body.png",
+    "face-skin.png",
     "ear-L.png",
     "ear-R.png",
-    "face-skin.png",
     "eye-white-L.png",
     "eye-white-R.png",
     "iris-L.png",
@@ -62,16 +62,26 @@
   "rendering": "source-over; alpha clips multiply alpha only and preserve straight RGB; order is explicit, depth is for parallax only",
   "bleed": {
     "hair-side-L": {
-      "rootExtensionPx": 112,
-      "maximumGeodesicDistance": 112,
-      "addedPixels": 18773,
-      "occluder": "hair-front.png"
+      "pixels": 10787,
+      "bounds": {
+        "x": 668,
+        "y": 327,
+        "width": 139,
+        "height": 111
+      },
+      "maximumVerticalRootOverlapPx": 111,
+      "note": "Measured overlap under opaque front hair after curved inner-root taper; not a uniform dilation of the outer silhouette."
     },
     "hair-side-R": {
-      "rootExtensionPx": 112,
-      "maximumGeodesicDistance": 112,
-      "addedPixels": 16769,
-      "occluder": "hair-front.png"
+      "pixels": 10164,
+      "bounds": {
+        "x": 1242,
+        "y": 322,
+        "width": 129,
+        "height": 116
+      },
+      "maximumVerticalRootOverlapPx": 116,
+      "note": "Measured overlap under opaque front hair after curved inner-root taper; not a uniform dilation of the outer silhouette."
     }
   },
   "eyes": {
@@ -129,7 +139,7 @@
         "x": 493,
         "y": 67,
         "width": 1044,
-        "height": 881
+        "height": 886
       },
       "depth": -0.3,
       "parent": "head",
@@ -194,7 +204,7 @@
         "x": 1132,
         "y": 322,
         "width": 407,
-        "height": 641
+        "height": 640
       },
       "depth": 0.9,
       "parent": "head",
@@ -210,7 +220,7 @@
         "x": 640,
         "y": 50,
         "width": 762,
-        "height": 415
+        "height": 416
       },
       "depth": 1,
       "parent": "head",
@@ -319,10 +329,10 @@
     {
       "file": "iris-L.png",
       "boundingBox": {
-        "x": 875,
-        "y": 466,
-        "width": 72,
-        "height": 75
+        "x": 872,
+        "y": 465,
+        "width": 79,
+        "height": 73
       },
       "depth": 0.8,
       "parent": "head",
@@ -336,10 +346,10 @@
     {
       "file": "iris-R.png",
       "boundingBox": {
-        "x": 1099,
-        "y": 466,
-        "width": 74,
-        "height": 75
+        "x": 1095,
+        "y": 465,
+        "width": 79,
+        "height": 72
       },
       "depth": 0.8,
       "parent": "head",
@@ -353,9 +363,9 @@
     {
       "file": "eyelid-upper-L.png",
       "boundingBox": {
-        "x": 809,
+        "x": 810,
         "y": 426,
-        "width": 173,
+        "width": 172,
         "height": 108
       },
       "depth": 0.8,
@@ -371,7 +381,7 @@
       "boundingBox": {
         "x": 1065,
         "y": 426,
-        "width": 168,
+        "width": 167,
         "height": 108
       },
       "depth": 0.8,
@@ -419,8 +429,8 @@
       "boundingBox": {
         "x": 738,
         "y": 474,
-        "width": 97,
-        "height": 165
+        "width": 103,
+        "height": 159
       },
       "depth": 0.2,
       "parent": "head",
@@ -433,10 +443,10 @@
     {
       "file": "ear-R.png",
       "boundingBox": {
-        "x": 1206,
+        "x": 1210,
         "y": 474,
-        "width": 100,
-        "height": 165
+        "width": 96,
+        "height": 157
       },
       "depth": 0.2,
       "parent": "head",
@@ -741,6 +751,7 @@
     }
   },
   "previewedMotion": {
+    "P": 20,
     "headDegrees": [
       -3,
       3
@@ -749,10 +760,42 @@
       -4,
       4
     ],
-    "irisX": [
-      -12,
-      12
-    ],
-    "status": "Raster preview only; not target engine validation"
+    "irisEllipse": {
+      "rx": 12,
+      "ry": 7
+    },
+    "status": "Canvas QA rendered; see qa/validation-summary.json for measured checks and visual limitations"
+  },
+  "earOverlap": {
+    "drawOrder": "face-skin before ears",
+    "overlapPixels": 16,
+    "reason": "Face underlap must actually be below opaque ears to hide the padded skin."
+  },
+  "deliveryStatus": "BATCH1_ASSETS_AND_QA_WITH_DOCUMENTED_LIMITATIONS",
+  "v2BleedHistory": {
+    "hair-side-L": {
+      "rootExtensionPx": 112,
+      "maximumGeodesicDistance": 112,
+      "addedPixels": 18773,
+      "occluder": "hair-front.png"
+    },
+    "hair-side-R": {
+      "rootExtensionPx": 112,
+      "maximumGeodesicDistance": 112,
+      "addedPixels": 16769,
+      "occluder": "hair-front.png"
+    }
+  },
+  "revision": {
+    "base": "rig-layers-v3.1",
+    "scope": "R1, continuous moving iris ring, local F3/F4 corrections",
+    "referenceNeutralDiff": {
+      "differentPixels": 0,
+      "maxChannelDifference": 0,
+      "pixelsOverOne": 0,
+      "alphaDifferentPixels": 0,
+      "rmse": 0
+    },
+    "knownResiduals": "README.md"
   }
 }
