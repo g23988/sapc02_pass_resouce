@@ -12,7 +12,7 @@
   @media (max-width:820px){ main{ grid-template-columns:1fr; } }
   .stage{ border:1px solid var(--border); border-radius:14px; overflow:hidden; aspect-ratio:3/4; width:100%; max-width:600px; }
   .stage.full{ aspect-ratio:1; }
-  .stage.bg-white{ background:#fff; } .stage.bg-dark{ background:#161e2e; }
+  .stage.bg-white{ background:#fff; } .stage.bg-dark{ background:#161e2e; } .stage.bg-magenta{ background:#ff00ff; }
   .stage.bg-checker{ background:repeating-conic-gradient(#d9dde4 0 25%, #fff 0 50%) 0 0/24px 24px; }
   canvas{ display:block; width:100%; height:100%; }
   h1{ font-size:18px; margin:0 0 6px; } h2{ font-size:13px; color:var(--muted); margin:14px 0 6px; font-weight:700; }
@@ -23,6 +23,7 @@
   label{ display:grid; grid-template-columns:76px 1fr 44px; gap:8px; align-items:center; font-size:13px; }
   input[type=range]{ width:100%; }
   #st{ font:12px ui-monospace,Menlo,monospace; color:var(--muted); margin-top:12px; white-space:pre; }
+  .hint{ font-size:12px; color:var(--muted); }
 </style>
 </head>
 <body>
@@ -30,6 +31,13 @@
   <div><div class="stage bg-white" id="stage"><canvas id="cv"></canvas></div></div>
   <section>
     <h1>雲端學徒・圖層預覽（開發用）</h1>
+    <div id="srcBox" hidden>
+      <h2>素材比較（?root=A&amp;alt=B，同源路徑）</h2><div class="row" id="srcs"></div>
+    </div>
+    <h2>素材 QA 姿勢（暫停後切換；P = 視差）</h2>
+    <div class="row" id="poses"></div>
+    <div class="row">視差 <button data-p="10">10（線上）</button><button data-p="20">20（目標）</button>
+      <span class="hint">?qa=1：開頁即暫停、關呼吸與眨眼</span></div>
     <h2>遊戲狀態（apprentice.js 的映射）</h2><div class="row" id="presets"></div>
     <h2>眼睛</h2><div class="row" id="eyes"></div>
     <h2>嘴型（九選一）</h2><div class="row" id="mouths"></div>
@@ -56,8 +64,11 @@
     <h2>圖層（drawOrder）</h2><div class="row layers" id="layers"></div>
     <h2>背景／取景</h2>
     <div class="row">
-      <button data-bg="white" class="on">白色</button><button data-bg="dark">深色</button><button data-bg="checker">棋盤</button>
+      <button data-bg="white" class="on">白色</button><button data-bg="dark">深色</button><button data-bg="magenta">洋紅</button><button data-bg="checker">棋盤</button>
+    </div>
+    <div class="row">
       <button data-fr="card" class="on">卡片</button><button data-fr="full">整張 2048</button>
+      <button data-fr="face">臉</button><button data-fr="eyes">眼睛</button><button data-fr="earL">左耳</button><button data-fr="earR">右耳</button><button data-fr="collar">衣領</button>
     </div>
     <div id="st"></div>
   </section>
@@ -65,18 +76,61 @@
 <script src="../apprentice-rig.js"></script>
 <script>
 "use strict";
-// ?root=<folder>&ext=.png loads another copy of the rig (e.g. the 2048 originals) for verification
-// (same-origin only, so a crafted link cannot make this page show someone else's images)
+// ?root=<folder>&ext=.png loads another copy of the rig (e.g. the 2048 originals) for verification;
+// ?alt=<folder> adds a second copy to flip between (A/B), ?p=20 sets the head parallax, ?qa=1 opens
+// paused with breathing and blinking off. Same-origin only, so a crafted link cannot make this page
+// show someone else's images.
 const q = new URLSearchParams(location.search);
 const sameOrigin = r => { try { return new URL(r, location.href).origin === location.origin; } catch { return false; } };
-const root = q.get("root") && sameOrigin(q.get("root")) ? q.get("root") : undefined;
-const ext = root && [".png", ".webp"].includes(q.get("ext")) ? q.get("ext") : undefined;
+const pick = k => (q.get(k) && sameOrigin(q.get(k)) ? q.get(k) : undefined);
+const ext = [".png", ".webp"].includes(q.get("ext")) ? q.get("ext") : undefined;
+const SRC = { A: pick("root"), B: pick("alt") };
+const qaMode = q.get("qa") === "1";
+const cfg = { src: "A", parallax: +q.get("p") || undefined };
+// zoomed QA framings in rig units (the stage stays 3:4)
+Object.assign(ApprenticeRig.FRAMING, {
+  face: { x: 660, y: 330, w: 730 }, eyes: { x: 830, y: 430, w: 390 },
+  earL: { x: 640, y: 420, w: 330 }, earR: { x: 1080, y: 420, w: 330 }, collar: { x: 640, y: 720, w: 770 },
+});
+const POSES = {   // the asset-QA set: [head°, hair L°, hair R°, gaze x, gaze y]
+  "中性": [0, 0, 0, 0, 0], "看左": [0, 0, 0, -1, 0], "看右": [0, 0, 0, 1, 0], "看上": [0, 0, 0, 0, -1], "看下": [0, 0, 0, 0, 1],
+  "左髮 −4°": [0, -4, 0, 0, 0], "左髮 +4°": [0, 4, 0, 0, 0], "右髮 −4°": [0, 0, -4, 0, 0], "右髮 +4°": [0, 0, 4, 0, 0],
+  "頭 −3° 髮 +4°": [-3, 4, 4, 0, 0], "頭 +3° 髮 −4°": [3, -4, -4, 0, 0],
+};
 const cv = document.getElementById("cv"), stage = document.getElementById("stage");
-const rig = ApprenticeRig.create(cv, { framing: "card", root, ext });
-window.rig = rig;
+let rig, framing = "card", paused = false, breathOn = !qaMode;
 const $ = id => document.getElementById(id);
 const mk = (txt, fn, parent) => { const b = document.createElement("button"); b.textContent = txt; b.onclick = () => fn(b); parent.appendChild(b); return b; };
 const radio = (sel, b) => { document.querySelectorAll(sel).forEach(x => x.classList.remove("on")); b && b.classList.add("on"); };
+const manual = { head: null, hairL: null, hairR: null, gx: null, gy: null, br: null };
+const apply = () => {
+  rig.setBreathManual(manual.br);
+  rig.setHeadAngle(manual.head);
+  rig.setHairAngles(manual.hairL == null && manual.hairR == null ? null : manual.hairL ?? 0, manual.hairR ?? 0);
+  rig.setGazeManual(manual.gx == null && manual.gy == null ? null : manual.gx ?? 0, manual.gy ?? 0);
+};
+const showManual = () => Object.keys(manual).forEach(id => {
+  $(id).value = manual[id] ?? 0;
+  $(id + "v").textContent = manual[id] == null ? "自動" : (+manual[id]).toFixed(id.startsWith("g") || id === "br" ? 2 : 1);
+});
+
+// (re)build the rig — on load, on A/B switch and on a parallax change; pose, framing and pause carry over
+function make() {
+  if (rig) rig.destroy();
+  const root = SRC[cfg.src];
+  rig = ApprenticeRig.create(cv, { framing, root, ext: root ? ext : undefined, parallax: cfg.parallax, autoBlink: !qaMode });
+  window.rig = rig;
+  ["outfits", "layers"].forEach(id => ($(id).textContent = ""));
+  rig.ready.then(() => {
+    rig.setBreath({ on: breathOn }); rig.pause(paused); apply();
+    radio("#eyes button", $("eyes").firstChild); radio("#mouths button", $("mouths").firstChild);
+    rig.outfits().forEach(id => mk(id, b => wear(id, b), $("outfits")));
+    radio("#outfits button", $("outfits").firstChild);
+    rig.layers().forEach(n => { const b = mk(n, () => { b.classList.toggle("on"); rig.setLayerVisible(n, b.classList.contains("on")); }, $("layers")); b.classList.add("on"); });
+    radio("[data-p]", document.querySelector(`[data-p="${cfg.parallax || 10}"]`));
+  });
+}
+
 const PRESETS = {   // mirrors apprentice.js STATE: [eyes, mouth, brow dy, brow rot, gaze]
   "中性": ["neutral", "closed", 0, 0, null], "答對開心": ["sparkle", "open-smile", -4, 0, null],
   "思考": ["neutral", "u", -6, 0, [-0.6, -0.9]], "失落但不放棄": ["neutral", "smile", 4, 8, [0, 0.5]],
@@ -89,51 +143,54 @@ const sync = () => {
 Object.entries(PRESETS).forEach(([name, [e, m, dy, rot, g]]) => mk(name, b => {
   rig.setEyes(e); rig.setMouth(m); rig.setBrows(dy, rot); rig.setGaze(...(g || [0, 0])); radio("#presets button", b); sync();
 }, $("presets")));
-rig.EYES.forEach(e => mk(e, b => { rig.setEyes(e); radio("#eyes button", b); }, $("eyes")));
-rig.MOUTHS.forEach(m => mk(m, b => { rig.setMouth(m); radio("#mouths button", b); }, $("mouths")));
-rig.ready.then(() => {
-  radio("#eyes button", $("eyes").firstChild); radio("#mouths button", $("mouths").firstChild);
-  rig.outfits().forEach(id => mk(id, b => wear(id, b), $("outfits")));
-  radio("#outfits button", $("outfits").firstChild);
-  rig.layers().forEach(n => { const b = mk(n, () => { b.classList.toggle("on"); rig.setLayerVisible(n, b.classList.contains("on")); }, $("layers")); b.classList.add("on"); });
-});
+ApprenticeRig.EYES.forEach(e => mk(e, b => { rig.setEyes(e); radio("#eyes button", b); }, $("eyes")));
+ApprenticeRig.MOUTHS.forEach(m => mk(m, b => { rig.setMouth(m); radio("#mouths button", b); }, $("mouths")));
+Object.entries(POSES).forEach(([name, [h, l, r, x, y]]) => mk(name, b => {
+  Object.assign(manual, { head: h, hairL: l, hairR: r, gx: x, gy: y, br: 0 }); showManual(); apply(); radio("#poses button", b);
+}, $("poses")));
+if (SRC.B) {
+  $("srcBox").hidden = false;
+  [["A", SRC.A || "網站預設"], ["B", SRC.B]].forEach(([k, path]) => {
+    const b = mk(`${k}：${path.replace(/\/$/, "").split("/").pop()}`, () => { cfg.src = k; radio("#srcs button", b); make(); }, $("srcs"));
+    b.title = path; if (k === "A") b.classList.add("on");
+  });
+}
+document.querySelectorAll("[data-p]").forEach(b => b.onclick = () => { cfg.parallax = +b.dataset.p; make(); });
 const wear = (id, b) => rig.setOutfit(id).then(ok => {
   $("outfitMsg").textContent = ok ? "" : `「${id}」載入失敗，維持 ${rig.state().outfit}`;
   if (ok) radio("#outfits button", b || [...$("outfits").children].find(x => x.textContent === id));
 });
 $("outfitTry").onclick = () => wear($("outfitId").value.trim());
-let paused = false;
-$("pause").onclick = e => {
-  paused = !paused; rig.pause(paused);
-  if (paused) { rig.reset(); rig.pause(true); Object.keys(manual).forEach(id => { manual[id] = null; $(id).value = 0; $(id + "v").textContent = "自動"; }); sync(); radio("#presets button"); }
-  e.target.textContent = paused ? "繼續動畫" : "暫停並回到中性原點";
+const setPaused = p => {
+  paused = p; rig.pause(paused);
+  if (paused) { rig.reset(); rig.pause(true); Object.keys(manual).forEach(id => (manual[id] = null)); showManual(); apply(); sync(); radio("#presets button"); radio("#poses button"); }
+  $("pause").textContent = paused ? "繼續動畫" : "暫停並回到中性原點";
 };
+$("pause").onclick = () => setPaused(!paused);
 document.querySelectorAll("[data-r]").forEach(b => b.onclick = () => {
   if (b.dataset.r === "hop") rig.hop();
   if (b.dataset.r === "nod") { rig.nod(12); setTimeout(() => rig.nod(0), 1500); }
   if (b.dataset.r === "blink") rig.blink();
   if (b.dataset.r === "sigh") rig.sigh();
 });
-let breathOn = true;
-$("breathOn").onclick = e => { breathOn = !breathOn; rig.setBreath({ on: breathOn }); e.target.classList.toggle("on", breathOn); e.target.textContent = breathOn ? "呼吸：開" : "呼吸：關"; };
+const showBreath = () => { $("breathOn").classList.toggle("on", breathOn); $("breathOn").textContent = breathOn ? "呼吸：開" : "呼吸：關"; };
+$("breathOn").onclick = () => { breathOn = !breathOn; rig.setBreath({ on: breathOn }); showBreath(); };
 ["bDepth", "bRate"].forEach(id => $(id).oninput = () => {
   $(id + "v").textContent = (+$(id).value).toFixed(1);
   rig.setBreath(id === "bDepth" ? { depth: +$(id).value } : { rate: +$(id).value });
 });
-const manual = { head: null, hairL: null, hairR: null, gx: null, gy: null, br: null };
-const apply = () => {
-  rig.setBreathManual(manual.br);
-  rig.setHeadAngle(manual.head);
-  rig.setHairAngles(manual.hairL == null && manual.hairR == null ? null : manual.hairL ?? 0, manual.hairR ?? 0);
-  rig.setGazeManual(manual.gx == null && manual.gy == null ? null : manual.gx ?? 0, manual.gy ?? 0);
-};
-Object.keys(manual).forEach(id => $(id).oninput = () => { manual[id] = +$(id).value; $(id + "v").textContent = (+$(id).value).toFixed(id.startsWith("g") || id === "br" ? 2 : 1); apply(); });
-$("auto").onclick = () => { Object.keys(manual).forEach(id => { manual[id] = null; $(id).value = 0; $(id + "v").textContent = "自動"; }); apply(); };
+Object.keys(manual).forEach(id => $(id).oninput = () => { manual[id] = +$(id).value; showManual(); apply(); });
+$("auto").onclick = () => { Object.keys(manual).forEach(id => (manual[id] = null)); showManual(); apply(); radio("#poses button"); };
 document.querySelectorAll("[data-bg]").forEach(b => b.onclick = () => { stage.className = stage.className.replace(/bg-\w+/, "bg-" + b.dataset.bg); radio("[data-bg]", b); });
-document.querySelectorAll("[data-fr]").forEach(b => b.onclick = () => { stage.classList.toggle("full", b.dataset.fr === "full"); rig.setFraming(b.dataset.fr); radio("[data-fr]", b); });
+document.querySelectorAll("[data-fr]").forEach(b => b.onclick = () => {
+  framing = b.dataset.fr; stage.classList.toggle("full", framing === "full"); rig.setFraming(framing); radio("[data-fr]", b);
+});
 addEventListener("resize", () => rig.resize());
 setInterval(() => { const s = rig.state(); $("st").textContent =
-  `outfit ${s.outfit}  eyes ${s.eyes}  mouth ${s.mouth}  brows dy ${s.brows.dy} rot ${s.brows.rot}\nhead ${s.headDeg.toFixed(2)}°  hair L ${s.hairL.toFixed(2)}° R ${s.hairR.toFixed(2)}°  gaze ${s.gaze.map(v => v.toFixed(2)).join(", ")}  breath ${s.breath.toFixed(2)}`; }, 200);
+  `src ${cfg.src}  P ${cfg.parallax || 10}  outfit ${s.outfit}  eyes ${s.eyes}  mouth ${s.mouth}  brows dy ${s.brows.dy} rot ${s.brows.rot}\nhead ${s.headDeg.toFixed(2)}°  hair L ${s.hairL.toFixed(2)}° R ${s.hairR.toFixed(2)}°  gaze ${s.gaze.map(v => v.toFixed(2)).join(", ")}  breath ${s.breath.toFixed(2)}`; }, 200);
+showBreath();
+make();
+if (qaMode) setPaused(true);
 </script>
 </body>
 </html>
